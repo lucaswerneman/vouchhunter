@@ -85,6 +85,7 @@ enum HuntStyle {
         ? UIColor(red: 0.30, green: 0.87, blue: 0.62, alpha: 1)
         : UIColor(red: 0.0, green: 0.47, blue: 0.30, alpha: 1)
     })
+  static let electric = Color(red: 0.73, green: 0.95, blue: 0.30)
   static let mint = green.opacity(0.10)
   static let surface = Color(uiColor: .secondarySystemGroupedBackground)
 }
@@ -92,16 +93,18 @@ struct HuntPillButton: ButtonStyle {
   @Environment(\.isEnabled) private var enabled
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   func makeBody(configuration: Configuration) -> some View {
-    configuration.label.font(.system(.headline, design: .rounded, weight: .semibold))
-      .padding(.horizontal, 20).frame(minHeight: 52).frame(maxWidth: .infinity)
-      .foregroundStyle(enabled ? Color.white : Color.secondary)
-      .background(
-        enabled ? Color(red: 0, green: 0.47, blue: 0.30) : Color(.tertiarySystemFill), in: Capsule()
-      )
-      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
-      .animation(
-        reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75),
-        value: configuration.isPressed)
+    configuration.label.font(.system(.subheadline, design: .monospaced, weight: .medium)).textCase(
+      .uppercase
+    )
+    .padding(.horizontal, 20).frame(minHeight: 52).frame(maxWidth: .infinity)
+    .foregroundStyle(enabled ? Color.black : Color.secondary)
+    .background(
+      enabled ? HuntStyle.electric : Color(.tertiarySystemFill), in: Capsule()
+    )
+    .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+    .animation(
+      reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75),
+      value: configuration.isPressed)
   }
 }
 struct LoginView: View {
@@ -445,7 +448,7 @@ struct HuntView: View {
                     )
                     .padding(20).background(HuntStyle.surface, in: Circle())
                   }
-                  Text(objectName).font(.system(.subheadline, design: .rounded, weight: .bold))
+                  Text(objectName).font(.system(.subheadline, design: .monospaced, weight: .bold))
                     .foregroundStyle(.primary).padding(.horizontal, 14).padding(.vertical, 7)
                     .background(HuntStyle.surface, in: Capsule())
                 }
@@ -471,8 +474,8 @@ struct HuntView: View {
         } label: {
           HStack(spacing: 10) {
             Text("\(hunt?.collected.count ?? 0) / \(campaign.target)").font(
-              .system(.headline, design: .rounded, weight: .bold))
-            Text("insamlade").font(.subheadline).foregroundStyle(.secondary)
+              .system(.headline, design: .monospaced, weight: .bold))
+            Text("FYND").font(.subheadline).foregroundStyle(.secondary)
           }.padding(.horizontal, 18).frame(height: 48)
             .background(HuntStyle.surface, in: Capsule())
         }.buttonStyle(.plain).accessibilityLabel(
@@ -484,7 +487,8 @@ struct HuntView: View {
           Image(systemName: "scope").font(.title3).frame(width: 48, height: 48)
             .background(HuntStyle.surface, in: Circle())
         }.accessibilityLabel("Centrera nästa fynd")
-      }.padding(.horizontal, 20).padding(.top, 8)
+      }.foregroundStyle(.white).environment(\.colorScheme, .dark)
+        .padding(.horizontal, 20).padding(.top, 8)
     }
     .safeAreaInset(edge: .bottom) {
       VStack(alignment: .leading, spacing: 12) {
@@ -518,21 +522,23 @@ struct HuntView: View {
           .font(.caption).foregroundStyle(.secondary)
         } else if let next = nextStop {
           HStack {
-            Label("Nästa fynd", systemImage: "sparkle").font(.subheadline.weight(.semibold))
+            Label("NÄSTA FYND", systemImage: "location").font(.subheadline.weight(.semibold))
               .foregroundStyle(HuntStyle.green)
             Spacer()
-            Button("Alla platser", systemImage: "list.bullet") { showDetails = true }
+            Button("KARTA", systemImage: "list.bullet") { showDetails = true }
               .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
           }
           HStack {
-            Text(next.name).font(.system(.title2, design: .rounded, weight: .bold))
-              .minimumScaleFactor(0.8)
+            Text(next.name.uppercased()).font(
+              .system(.title2, design: .monospaced, weight: .medium)
+            )
+            .minimumScaleFactor(0.8)
             Spacer()
             if let loc = location.location {
               Text(
                 "\(Int(loc.distance(from: CLLocation(latitude: next.lat, longitude: next.lon)))) m"
               )
-              .font(.system(.title2, design: .rounded, weight: .bold)).monospacedDigit()
+              .font(.system(.title2, design: .monospaced, weight: .bold)).monospacedDigit()
             }
           }
           Text(isPreview ? "\(objectName) · exempel på nästa fynd" : collectionHint(next)).font(
@@ -545,7 +551,7 @@ struct HuntView: View {
             }.buttonStyle(HuntPillButton())
           } else {
             Button(
-              isPreview ? "Utforska platserna" : "Visa vägen till fyndet",
+              isPreview ? "Utforska jakten" : "Visa vägen",
               systemImage: isPreview ? "map.fill" : "figure.walk"
             ) {
               if isPreview { showDetails = true } else { directions(next) }
@@ -566,9 +572,10 @@ struct HuntView: View {
         .overlay(
           RoundedRectangle(cornerRadius: 32).stroke(Color.primary.opacity(0.035), lineWidth: 1)
         )
+        .foregroundStyle(.white).environment(\.colorScheme, .dark)
         .padding(.horizontal, 12).padding(.bottom, 8)
     }
-    .fontDesign(.rounded)
+    .fontDesign(.monospaced)
     .tint(HuntStyle.green)
     .navigationTitle(isPreview ? "Förhandsvisning" : "Jakten").navigationBarTitleDisplayMode(
       .inline

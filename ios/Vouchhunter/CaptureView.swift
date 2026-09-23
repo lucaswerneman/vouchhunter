@@ -96,7 +96,7 @@ struct CaptureView: View {
             Spacer()
           }
         }.buttonStyle(HuntPillButton()).disabled((!ready && !success) || busy)
-      }.padding(24).fontDesign(.rounded)
+      }.padding(24).fontDesign(.monospaced)
     }.task {
       guard ARWorldTrackingConfiguration.isSupported else {
         error = "Den här enheten stöder inte AR. Öppna jakten på en kompatibel iPhone."
