@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocationManagerDelegate {
   private let manager = CLLocationManager()
+  private var wantsUpdates = false
   @Published var location: CLLocation?
   @Published var message: String?
   override init() {
@@ -12,15 +13,16 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
     manager.desiredAccuracy = kCLLocationAccuracyBest
   }
   func start() {
+    wantsUpdates = true
     switch manager.authorizationStatus {
     case .notDetermined: manager.requestWhenInUseAuthorization()
     case .authorizedWhenInUse, .authorizedAlways: manager.startUpdatingLocation()
     default: message = "Tillåt platsåtkomst i Inställningar för att hitta och samla objekt."
     }
   }
-  func stop() { manager.stopUpdatingLocation() }
+  func stop() { wantsUpdates = false; manager.stopUpdatingLocation() }
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-    if manager.authorizationStatus != .notDetermined { start() }
+    if wantsUpdates && manager.authorizationStatus != .notDetermined { start() }
   }
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let last = locations.last else { return }

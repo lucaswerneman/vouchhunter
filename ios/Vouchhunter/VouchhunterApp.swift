@@ -3,7 +3,19 @@ import MapKit
 import SwiftUI
 
 @main struct VouchhunterApp: App {
-  var body: some Scene { WindowGroup { RootView().tint(Brand.accent) } }
+  var body: some Scene {
+    WindowGroup {
+      #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--preview-hunt") {
+          NavigationStack { HuntView(campaign: SimulatorHunt.campaign) }.tint(Brand.accent)
+        } else {
+          RootView().tint(Brand.accent)
+        }
+      #else
+        RootView().tint(Brand.accent)
+      #endif
+    }
+  }
 }
 @MainActor final class Session: ObservableObject {
   @Published var loggedIn = Keychain.read() != nil
@@ -211,6 +223,13 @@ struct ExploreView: View {
 }
 struct HuntView: View {
   let campaign: Campaign
+  private var isPreview: Bool {
+    #if DEBUG && targetEnvironment(simulator)
+      return ProcessInfo.processInfo.arguments.contains("--preview-hunt")
+    #else
+      return false
+    #endif
+  }
   @StateObject private var location = LocationService()
   @State private var hunt: Hunt?
   @State private var selected: Stop?
@@ -424,7 +443,9 @@ struct HuntView: View {
         .background(
           .regularMaterial, in: UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
     }
-    .navigationTitle("Jakten").navigationBarTitleDisplayMode(.inline)
+    .navigationTitle(isPreview ? "Förhandsvisning" : "Jakten").navigationBarTitleDisplayMode(
+      .inline
+    )
     .sheet(isPresented: $showDetails) {
       NavigationStack {
         detailContent.navigationTitle("Om jakten").navigationBarTitleDisplayMode(.inline)
@@ -434,6 +455,12 @@ struct HuntView: View {
       }.presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
     }
     .task {
+      if isPreview {
+        #if DEBUG && targetEnvironment(simulator)
+          hunt = SimulatorHunt.hunt
+        #endif
+        return
+      }
       location.start()
       do {
         let r: HuntEnvelope = try await API.shared.request("/hunts/" + campaign.id)
@@ -475,6 +502,9 @@ struct HuntView: View {
     }
   }
   private func collectionHint(_ stop: Stop) -> String {
+    if isPreview && hunt?.collected.contains(stop.id) != true {
+      return "Förhandsvisning · kamera-AR provas på iPhone"
+    }
     if hunt?.collected.contains(stop.id) == true { return "Redan i din samling" }
     if hunt?.completed != nil { return "Jakten är slutförd" }
     guard let hunt else { return "Starta jakten för att samla" }
@@ -486,6 +516,7 @@ struct HuntView: View {
       ? "Du är framme – öppna kameran" : "Gå inom \(stop.radius) meter för att samla"
   }
   private func directions(_ stop: Stop) {
+    guard !isPreview else { return }
     let destination = MKMapItem(
       placemark: MKPlacemark(coordinate: .init(latitude: stop.lat, longitude: stop.lon)))
     destination.name = stop.name
@@ -494,6 +525,7 @@ struct HuntView: View {
     ])
   }
   private func canCollect(_ stop: Stop) -> Bool {
+    guard !isPreview else { return false }
     guard let hunt, hunt.completed == nil, hunt.expires > Date().timeIntervalSince1970,
       let loc = location.location, loc.horizontalAccuracy >= 0, loc.horizontalAccuracy <= 35,
       abs(loc.timestamp.timeIntervalSinceNow) < 45
@@ -502,6 +534,12 @@ struct HuntView: View {
       <= Double(stop.radius)
   }
   private func start() async {
+    if isPreview {
+      #if DEBUG && targetEnvironment(simulator)
+        hunt = SimulatorHunt.hunt
+      #endif
+      return
+    }
     busy = true
     defer { busy = false }
     do {
@@ -510,9 +548,51 @@ struct HuntView: View {
     } catch { self.error = error.localizedDescription }
   }
   private func collect(_ stop: Stop) async throws {
+    guard !isPreview else { return }
     location.start()
     var payload = try location.payload()
     payload["stop_id"] = stop.id
     hunt = try await API.shared.request("/hunts/" + campaign.id + "/collect", body: payload)
   }
 }
+
+#if DEBUG && targetEnvironment(simulator)
+  /// Offline visual fixture. Never published, paid, or granted backend privileges.
+  private enum SimulatorHunt {
+    static let campaign: Campaign = {
+      let coordinates: [(String, Double, Double)] = [
+        ("Sergels torg", 59.3326, 18.0649), ("Kulturhuset", 59.3321, 18.0645),
+        ("Brunkebergstorg", 59.3309, 18.0663), ("Kungsträdgården", 59.3312, 18.0717),
+        ("Hötorget", 59.3354, 18.0631), ("Berzelii park", 59.3326, 18.0740),
+        ("Norrmalmstorg", 59.3330, 18.0730), ("Gustav Adolfs torg", 59.3294, 18.0700),
+        ("Norra Bantorget", 59.3350, 18.0570), ("Strömparterren", 59.3280, 18.0707),
+      ]
+      let payload: [String: Any] = [
+        "id": "simulator-preview", "title": "Den stora pizzajakten",
+        "brand": "Vouchhunter · Exempelkampanj",
+        "description":
+          "Tio pizzor har dykt upp i city. Upptäck platserna, samla dina fynd och nå hela vägen till belöningen.",
+        "reward": "En nybakad pizza",
+        "terms": "Lokal designförhandsvisning. Ingen riktig kampanj eller giltig voucher.",
+        "venue": "Exempelpizzerian", "target": 10, "capacity": 100, "voucher_days": 14,
+        "starts": Date().timeIntervalSince1970 - 60, "ends": Date().timeIntervalSince1970 + 86400,
+        "stops": coordinates.enumerated().map { i, item in
+          [
+            "id": "preview-\(i)", "campaign_id": "simulator-preview", "name": item.0, "lat": item.1,
+            "lon": item.2, "radius": 40,
+          ] as [String: Any]
+        },
+      ]
+      return try! JSONDecoder().decode(
+        Campaign.self, from: JSONSerialization.data(withJSONObject: payload))
+    }()
+    static var hunt: Hunt {
+      let payload: [String: Any] = [
+        "id": "preview-hunt", "expires": Date().timeIntervalSince1970 + 3000,
+        "collected": ["preview-1", "preview-2", "preview-4"],
+      ]
+      return try! JSONDecoder().decode(
+        Hunt.self, from: JSONSerialization.data(withJSONObject: payload))
+    }
+  }
+#endif

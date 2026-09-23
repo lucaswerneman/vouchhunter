@@ -60,3 +60,6 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 - AR: tryck på modellen, laddningsläge, omstart vid spårningsfel, serverbekräftad insamlingsanimation och haptik. Slutförd jakt öppnar vouchers.
 - Objekt placeras med raycast mot en identifierad horisontell yta i bildens centrum; modellens geometriska mitt normaliseras.
 - Xcode simulatorbygge verifierar kompilering. AR-träfftestning, ytor, rörelse och den nya kampanjvyn med en publicerad kampanj återstår att verifiera på fysisk enhet. Android har fortfarande den tidigare spelvyn.
+
+## Bedöm designen i simulatorn
+Välj Xcode-schemat `Vouchhunter Preview` och destinationen `Vouchhunter iPhone 17 Pro`. Schemat startar den riktiga kampanjvyn med en tydligt märkt, lokal exempeljakt (3 av 10 fynd). Den använder inga backendkonton eller kampanjändringar. Endast Debug i simulatorn stöder förhandsvisningen; kamera-AR och riktiga vouchers ingår inte. Vanliga `Vouchhunter`-schemat använder riktiga API-data.
