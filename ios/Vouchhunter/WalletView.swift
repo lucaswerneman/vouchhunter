@@ -44,7 +44,10 @@ struct WalletView: View {
               Text(
                 v.redeemed != nil
                   ? "Inlöst"
-                  : v.isValid ? "Visa för personalen vid inlösen" : "Giltighetstiden har gått ut"
+                  : v.isValid
+                    ? (SimulatorMode.active
+                      ? "Testa inlösen under Testläge" : "Visa för personalen vid inlösen")
+                    : "Giltighetstiden har gått ut"
               ).font(.headline)
               Text(v.venue ?? "")
               Text(

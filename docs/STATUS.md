@@ -76,3 +76,6 @@ Vinklad, dämpad 3D-karta och ett aktivt föremål ersätter stora nummermarkör
 - Testdata finns bara i processminnet och återställs vid omstart. SimulatorStore och simulatorns mötesvy kompileras endast för Debug + simulator. Ingen server, betalning, behörighet eller riktig voucher påverkas.
 - Android och webbportalen har samma grundläggande designroller. Androids spelvy och fysisk AR behöver fortsatt mer arbete och separat visuell enhetsverifiering.
 - Xcode Debug-simulatorbygge godkänt. Insamling och återgång till karta visuellt verifierade. Portalens översikt och betalningsvy visuellt granskade.
+
+- Hela simulatorflödet visuellt verifierat från noll till tio insamlingar, följt av automatisk kupongvy. Omstart använd av testaren och visad som 0/10 med startknapp.
+- CI för designsystem/simulator (2d717d1): backendtester, iOS-bygge/modelltester samt Android assembleDebug och lintDebug godkända. Slutlig testkupongtext därefter ombyggd lokalt med godkänt Xcode-resultat.
