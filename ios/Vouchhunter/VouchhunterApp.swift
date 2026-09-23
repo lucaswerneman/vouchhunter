@@ -9,10 +9,10 @@ import SwiftUI
         if ProcessInfo.processInfo.arguments.contains("--preview-hunt") {
           NavigationStack { HuntView(campaign: SimulatorHunt.campaign) }.tint(Brand.accent)
         } else {
-          RootView().tint(Brand.accent)
+          RootView().tint(HuntStyle.green).fontDesign(.rounded)
         }
       #else
-        RootView().tint(Brand.accent)
+        RootView().tint(HuntStyle.green).fontDesign(.rounded)
       #endif
     }
   }
@@ -76,6 +76,32 @@ enum Brand {
         ? UIColor(red: 0.55, green: 0.85, blue: 0.67, alpha: 1)
         : UIColor(red: 0.13, green: 0.38, blue: 0.27, alpha: 1)
     })
+}
+enum HuntStyle {
+  static let green = Color(
+    uiColor: UIColor { traits in
+      traits.userInterfaceStyle == .dark
+        ? UIColor(red: 0.30, green: 0.87, blue: 0.62, alpha: 1)
+        : UIColor(red: 0.0, green: 0.47, blue: 0.30, alpha: 1)
+    })
+  static let mint = green.opacity(0.10)
+  static let surface = Color(uiColor: .secondarySystemGroupedBackground)
+}
+struct HuntPillButton: ButtonStyle {
+  @Environment(\.isEnabled) private var enabled
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label.font(.system(.headline, design: .rounded, weight: .semibold))
+      .padding(.horizontal, 20).frame(minHeight: 52).frame(maxWidth: .infinity)
+      .foregroundStyle(enabled ? Color.white : Color.secondary)
+      .background(
+        enabled ? Color(red: 0, green: 0.47, blue: 0.30) : Color(.tertiarySystemFill), in: Capsule()
+      )
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .animation(
+        reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75),
+        value: configuration.isPressed)
+  }
 }
 struct LoginView: View {
   @ObservedObject var session: Session
@@ -261,7 +287,7 @@ struct HuntView: View {
           Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
         if let hunt, hunt.completed != nil {
           Label("Du är klar! Din voucher finns i plånboken.", systemImage: "checkmark.seal.fill")
-            .foregroundStyle(Brand.accent)
+            .foregroundStyle(HuntStyle.green)
           Button("Visa min voucher", systemImage: "qrcode") { showWallet = true }
             .buttonStyle(.borderedProminent)
         } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
@@ -335,7 +361,7 @@ struct HuntView: View {
             } label: {
               ZStack {
                 Circle().fill(
-                  hunt?.collected.contains(stop.id) == true ? Color.secondary : Brand.accent
+                  hunt?.collected.contains(stop.id) == true ? Color.secondary : HuntStyle.green
                 )
                 .frame(width: 48, height: 48)
                 .overlay(Circle().stroke(.white, lineWidth: 3))
@@ -361,19 +387,38 @@ struct HuntView: View {
           Spacer()
           Text("\(hunt?.collected.count ?? 0)/\(campaign.target)")
             .font(.system(.title, design: .rounded, weight: .bold)).monospacedDigit()
+            .foregroundStyle(HuntStyle.green)
             .contentTransition(.numericText())
             .accessibilityLabel("\(hunt?.collected.count ?? 0) av \(campaign.target) insamlade")
         }
-        ProgressView(value: Double(hunt?.collected.count ?? 0), total: Double(campaign.target))
-          .tint(Brand.accent)
+        if campaign.target <= 10 {
+          HStack(spacing: 6) {
+            ForEach(0..<campaign.target, id: \.self) { index in
+              RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(index < (hunt?.collected.count ?? 0) ? HuntStyle.green : HuntStyle.mint)
+                .frame(height: 18)
+                .overlay {
+                  if index < (hunt?.collected.count ?? 0) {
+                    Image(systemName: "checkmark").font(.system(size: 9, weight: .heavy))
+                      .foregroundStyle(.white)
+                  }
+                }
+            }
+          }.accessibilityHidden(true)
+        } else {
+          ProgressView(value: Double(hunt?.collected.count ?? 0), total: Double(campaign.target))
+            .tint(HuntStyle.green)
+        }
         HStack {
           Label(campaign.reward, systemImage: "ticket.fill").font(.caption.bold())
           Spacer()
           Button("Om jakten", systemImage: "info.circle") { showDetails = true }.labelStyle(
             .iconOnly)
         }
-      }.padding(16).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
-        .padding(.horizontal, 16).padding(.top, 8)
+      }.padding(16).background(
+        HuntStyle.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+      )
+      .padding(.horizontal, 16).padding(.top, 8)
     }
     .safeAreaInset(edge: .bottom) {
       VStack(alignment: .leading, spacing: 12) {
@@ -381,7 +426,7 @@ struct HuntView: View {
           Label("Jakten är klar!", systemImage: "checkmark.seal.fill").font(.title2.bold())
           Text(campaign.reward).font(.headline)
           Button("Hämta din belöning", systemImage: "ticket.fill") { showWallet = true }
-            .buttonStyle(.borderedProminent).controlSize(.large)
+            .buttonStyle(HuntPillButton())
         } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
           Text(hunt == nil ? "Ditt nästa äventyr" : "Redo för en ny runda?").font(.title2.bold())
           Text(
@@ -397,7 +442,7 @@ struct HuntView: View {
               Image(systemName: "arrow.right")
             }
             .frame(maxWidth: .infinity)
-          }.buttonStyle(.borderedProminent).controlSize(.large)
+          }.buttonStyle(HuntPillButton())
             .disabled(
               busy || campaign.ends <= clock.timeIntervalSince1970
                 || campaign.starts > clock.timeIntervalSince1970)
@@ -407,9 +452,16 @@ struct HuntView: View {
           .font(.caption).foregroundStyle(.secondary)
         } else if let next = orderedStops.first(where: { hunt?.collected.contains($0.id) != true })
         {
-          Text("NÄSTA FYND").font(.caption.bold()).foregroundStyle(Brand.accent)
           HStack {
-            Text(next.name).font(.title2.bold())
+            Label("Nästa fynd", systemImage: "sparkle").font(.subheadline.weight(.semibold))
+              .foregroundStyle(HuntStyle.green)
+            Spacer()
+            Button("Alla platser", systemImage: "list.bullet") { showDetails = true }
+              .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+          }
+          HStack {
+            Text(next.name).font(.system(.largeTitle, design: .rounded, weight: .bold))
+              .minimumScaleFactor(0.8)
             Spacer()
             if let loc = location.location {
               Text(
@@ -419,15 +471,18 @@ struct HuntView: View {
             }
           }
           Text(collectionHint(next)).font(.subheadline).foregroundStyle(.secondary)
-          HStack {
-            Button("Gångväg", systemImage: "figure.walk") { directions(next) }.buttonStyle(
-              .bordered)
-            Button("Öppna AR", systemImage: "viewfinder") {
+          if canCollect(next) {
+            Button("Samla i AR", systemImage: "viewfinder") {
               captureCount = hunt?.collected.count ?? 0
               selected = next
-            }.buttonStyle(.borderedProminent).disabled(!canCollect(next))
-            Spacer()
-            Button("Alla platser") { showDetails = true }.font(.subheadline)
+            }.buttonStyle(HuntPillButton())
+          } else {
+            Button(
+              isPreview ? "Utforska platserna" : "Visa vägen till fyndet",
+              systemImage: isPreview ? "map.fill" : "figure.walk"
+            ) {
+              if isPreview { showDetails = true } else { directions(next) }
+            }.buttonStyle(HuntPillButton())
           }
           if let hunt {
             Text(
@@ -439,10 +494,15 @@ struct HuntView: View {
         if let message = location.message {
           Text(message).font(.caption).foregroundStyle(.secondary)
         }
-      }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-          .regularMaterial, in: UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
+      }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
+        .background(HuntStyle.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .overlay(
+          RoundedRectangle(cornerRadius: 32).stroke(Color.primary.opacity(0.035), lineWidth: 1)
+        )
+        .padding(.horizontal, 12).padding(.bottom, 8)
     }
+    .fontDesign(.rounded)
+    .tint(HuntStyle.green)
     .navigationTitle(isPreview ? "Förhandsvisning" : "Jakten").navigationBarTitleDisplayMode(
       .inline
     )

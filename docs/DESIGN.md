@@ -38,3 +38,17 @@ Spelaren ska möta en värld att utforska, inte en dashboard. Kampanjjakten anv�
 AR använder kampanjens riktiga modell. Objektet placeras på en identifierad horisontell yta i kamerans riktning, går att trycka på och krymper bort efter serverbekräftad insamling. Haptisk respons markerar fyndet; sista fyndet leder till belöningen. Knappen finns kvar som tillgängligt alternativ till att träffa objektet.
 
 Teknisk referens: [Apple RealityKit – ARView](https://developer.apple.com/documentation/RealityKit/ARView) för träfftestning och raycast. Det är lokal ytplacering inom en GPS-zon, inte ännu ett permanent geospatialt ankare som alla ser på exakt samma punkt. Modellstorleken är fortfarande normaliserad till 1,5 meter. Nästa kvalitetssteg är fysisk AR-verifiering, kampanjstyrd skala, objektens rörelse/ljud och motsvarande spelvy på Android.
+
+## Family – låst appreferens
+
+Användaren har valt Family. Refero tillgängligt igen: stil `fd409745-cef9-4cb2-ae6b-e16d9161fb89` granskad som bakgrund, men appskärmarna styr denna ändring.
+
+| Beslut | Källa | Anpassning |
+|---|---|---|
+| Solida ljusa paneler, rymliga rundningar | [Watching Wallets](https://refero.design/screens/ca88e8c5-2fb2-4935-b52b-0edf5aaac6bb) | Spelarens nästa mål på vit panel över kartan; ingen grön glasdimma |
+| Rundad sans, få tydliga nivåer | Båda granskade appbilderna | SF Rounded i spelvyn; Dynamic Type behålls |
+| Färgat samlingskort och pillknapp | [Wallets ready](https://refero.design/screens/cc5547f7-52a5-490c-8755-d660e00917f4) | Mättad Vouchhunter-grön för handling/status, ljus mint för samling; inte Families varumärkestillgångar |
+| Koncentrerad handling i nederkant | Watching Wallets | En bred primärknapp, sekundära handlingar lugnare |
+| Samling visas som fyllda platser | Användarens spelkrav | Upp till tio visuella markeringar; större mål behåller numerisk progress |
+
+Avvisat: webbplatsens serifrubriker och dekorativa karaktärer överförs inte till appens kontroller. Kartan är fortsatt huvudmedia. Inga kopierade illustrationer, inga falska belöningar. Ytor följer systemets mörka läge; animationer respekterar Reduce Motion.

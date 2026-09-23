@@ -85,7 +85,7 @@ struct CaptureView: View {
           HStack {
             Spacer()
             if busy {
-              ProgressView().tint(.black)
+              ProgressView().tint(.white)
             } else {
               Label(
                 success
@@ -94,10 +94,9 @@ struct CaptureView: View {
                 systemImage: success ? "arrow.right" : "hand.tap.fill")
             }
             Spacer()
-          }.font(.headline).padding(18).foregroundStyle(.black).background(
-            Color(red: 0.85, green: 0.95, blue: 0.45), in: Capsule())
-        }.disabled((!ready && !success) || busy)
-      }.padding(24)
+          }
+        }.buttonStyle(HuntPillButton()).disabled((!ready && !success) || busy)
+      }.padding(24).fontDesign(.rounded)
     }.task {
       guard ARWorldTrackingConfiguration.isSupported else {
         error = "Den här enheten stöder inte AR. Öppna jakten på en kompatibel iPhone."

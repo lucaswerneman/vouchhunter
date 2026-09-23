@@ -63,3 +63,6 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 
 ## Bedöm designen i simulatorn
 Välj Xcode-schemat `Vouchhunter Preview` och destinationen `Vouchhunter iPhone 17 Pro`. Schemat startar den riktiga kampanjvyn med en tydligt märkt, lokal exempeljakt (3 av 10 fynd). Den använder inga backendkonton eller kampanjändringar. Endast Debug i simulatorn stöder förhandsvisningen; kamera-AR och riktiga vouchers ingår inte. Vanliga `Vouchhunter`-schemat använder riktiga API-data.
+
+## Family-referens
+Referos Family-appskärmar har nu granskats visuellt. Kampanjjakten använder solida systemytor, rundad systemtypografi, tydlig grön primärknapp och en samling med fyllda platser. Karta och native sheets bevaras. Simulatorns kampanjvy och öppning av detaljer är visuellt verifierade. AR-knappens formspråk är harmoniserat; kamera-AR är fortsatt inte verifierad i simulator.
