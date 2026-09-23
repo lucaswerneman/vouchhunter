@@ -54,3 +54,9 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 - Manuell uppdatering, väntande/utgången betalningslänk och avbruten återkomst visas utan att påstå att en betalning lyckats.
 - Utgångna kampanjperioder stoppas före kontakt med betaltjänsten.
 - Statusflödet och uppdateringsknappen har kontrollerats i webbläsare. Skarp Stripe-verifiering återstår.
+
+## Spelupplevelse – iPhone
+- Kampanjjakten har karta som huvudvy med samlingsstatus, numrerade fynd, nästa mål, GPS-avstånd och gångväg. Kampanjdetaljer ligger i en separat sheet.
+- AR: tryck på modellen, laddningsläge, omstart vid spårningsfel, serverbekräftad insamlingsanimation och haptik. Slutförd jakt öppnar vouchers.
+- Objekt placeras med raycast mot en identifierad horisontell yta i bildens centrum; modellens geometriska mitt normaliseras.
+- Xcode simulatorbygge verifierar kompilering. AR-träfftestning, ytor, rörelse och den nya kampanjvyn med en publicerad kampanj återstår att verifiera på fysisk enhet. Android har fortfarande den tidigare spelvyn.

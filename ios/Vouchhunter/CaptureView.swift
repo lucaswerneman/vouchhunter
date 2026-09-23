@@ -7,6 +7,8 @@ import SwiftUI
 struct CaptureView: View {
   let stop: Stop
   let model: CampaignModel?
+  let collectedCount: Int
+  let target: Int
   let collect: () async throws -> Void
   @Environment(\.dismiss) private var dismiss
   @State private var allowed = false
@@ -15,11 +17,18 @@ struct CaptureView: View {
   @State private var success = false
   @State private var error = ""
   @State private var modelURL: URL?
+  @State private var trackingHint = "Rör telefonen långsamt så hittar vi marken."
+  @State private var sessionID = UUID()
   var body: some View {
     ZStack {
       Color.black.ignoresSafeArea()
       if allowed, let modelURL {
-        PizzaARView(ready: $ready, fileURL: modelURL, onFailure: { error = $0 }).ignoresSafeArea()
+        CollectibleARView(
+          ready: $ready, fileURL: modelURL, captured: success,
+          onTap: { Task { await capture() } },
+          onHint: { trackingHint = $0 }, onFailure: { error = $0 }
+        )
+        .id(sessionID).ignoresSafeArea()
       }
       VStack(spacing: 18) {
         HStack {
@@ -31,22 +40,37 @@ struct CaptureView: View {
           Spacer()
           Text(stop.name).font(.headline).padding(12).background(.ultraThinMaterial, in: Capsule())
         }
+        Text("\(min(target, collectedCount + (success ? 1 : 0))) av \(target) insamlade")
+          .font(.subheadline.bold()).padding(12).background(.ultraThinMaterial, in: Capsule())
         Spacer()
+        if allowed && modelURL == nil && error.isEmpty {
+          ProgressView("Laddar ditt 3D-objekt…").tint(.white).foregroundStyle(.white)
+        }
         if success {
-          Label("Insamlad!", systemImage: "checkmark.circle.fill").font(.largeTitle.bold())
+          Label(
+            collectedCount + 1 >= target ? "Belöningen är din!" : "Insamlad!",
+            systemImage: "checkmark.circle.fill"
+          ).font(.largeTitle.bold())
             .foregroundStyle(.white)
         } else {
           Text(ready ? "Där är ditt fynd." : "Rikta kameran mot en öppen yta.").font(.title2.bold())
             .foregroundStyle(.white)
           Text(
             ready
-              ? "Tryck för att lägga det till din samling."
-              : "Rör telefonen långsamt så hittar vi marken."
+              ? "Tryck på 3D-objektet eller knappen för att samla."
+              : trackingHint
           ).foregroundStyle(.white)
         }
         if !error.isEmpty {
           Text(error).foregroundStyle(.white).padding().background(
             .red.opacity(0.8), in: RoundedRectangle(cornerRadius: 12))
+        }
+        if allowed && !error.isEmpty && !success {
+          Button("Försök igen") {
+            error = ""
+            ready = false
+            if modelURL != nil { sessionID = UUID() } else { Task { await loadModel() } }
+          }.buttonStyle(.borderedProminent)
         }
         if !allowed && !error.isEmpty {
           Button("Öppna inställningar") {
@@ -64,7 +88,9 @@ struct CaptureView: View {
               ProgressView().tint(.black)
             } else {
               Label(
-                success ? "Fortsätt jakten" : "Samla föremålet",
+                success
+                  ? (collectedCount + 1 >= target ? "Visa belöningen" : "Fortsätt jakten")
+                  : "Samla föremålet",
                 systemImage: success ? "arrow.right" : "hand.tap.fill")
             }
             Spacer()
@@ -80,13 +106,16 @@ struct CaptureView: View {
       allowed = await AVCaptureDevice.requestAccess(for: .video)
       if !allowed { error = "Kameraåtkomst behövs för att visa föremålet i din omgivning." }
       guard allowed else { return }
-      guard let model else {
-        error = "Kampanjen saknar ett 3D-objekt. Försök igen senare."
-        return
-      }
-      do { modelURL = try await API.shared.modelFile(assetID: model.usdz_asset_id) } catch {
-        self.error = error.localizedDescription
-      }
+      await loadModel()
+    }
+  }
+  private func loadModel() async {
+    guard let model else {
+      error = "Kampanjen saknar ett 3D-objekt. Försök igen senare."
+      return
+    }
+    do { modelURL = try await API.shared.modelFile(assetID: model.usdz_asset_id) } catch {
+      self.error = error.localizedDescription
     }
   }
   private func capture() async {
@@ -94,19 +123,23 @@ struct CaptureView: View {
       dismiss()
       return
     }
+    guard ready, !busy else { return }
     busy = true
     defer { busy = false }
     do {
       try await collect()
-      success = true
+      withAnimation(.spring(response: 0.4)) { success = true }
       error = ""
       UINotificationFeedbackGenerator().notificationOccurred(.success)
     } catch { self.error = error.localizedDescription }
   }
 }
-struct PizzaARView: UIViewRepresentable {
+struct CollectibleARView: UIViewRepresentable {
   @Binding var ready: Bool
   let fileURL: URL
+  let captured: Bool
+  let onTap: () -> Void
+  let onHint: (String) -> Void
   let onFailure: (String) -> Void
   func makeCoordinator() -> Coordinator { Coordinator(self) }
   func makeUIView(context: Context) -> ARView {
@@ -115,6 +148,9 @@ struct PizzaARView: UIViewRepresentable {
     configuration.planeDetection = [.horizontal]
     view.session.delegate = context.coordinator
     context.coordinator.view = view
+    view.addGestureRecognizer(
+      UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tapped(_:)))
+    )
     view.session.run(configuration)
     let coaching = ARCoachingOverlayView()
     coaching.session = view.session
@@ -124,28 +160,63 @@ struct PizzaARView: UIViewRepresentable {
     view.addSubview(coaching)
     return view
   }
-  func updateUIView(_ view: ARView, context: Context) {}
+  func updateUIView(_ view: ARView, context: Context) {
+    context.coordinator.parent = self
+    if captured { context.coordinator.animateCollection() }
+  }
   static func dismantleUIView(_ view: ARView, coordinator: Coordinator) { view.session.pause() }
   @MainActor final class Coordinator: NSObject, @preconcurrency ARSessionDelegate {
-    let parent: PizzaARView
+    var parent: CollectibleARView
     weak var view: ARView?
     var placed = false
-    init(_ parent: PizzaARView) { self.parent = parent }
-    func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
-      guard !placed, let plane = anchors.compactMap({ $0 as? ARPlaneAnchor }).first, let view else {
-        return
+    var object: Entity?
+    var animated = false
+    @objc func tapped(_ gesture: UITapGestureRecognizer) {
+      guard parent.ready, !parent.captured, let view,
+        var hit = view.entity(at: gesture.location(in: view)), let object
+      else { return }
+      while hit !== object {
+        guard let ancestor = hit.parent else { return }
+        hit = ancestor
       }
-      let anchor = AnchorEntity(world: plane.transform)
+      parent.onTap()
+    }
+    func animateCollection() {
+      guard !animated, let object else { return }
+      animated = true
+      var destination = object.transform
+      destination.scale *= 0.01
+      destination.translation.y += 0.5
+      object.move(
+        to: destination, relativeTo: object.parent, duration: 0.45, timingFunction: .easeInOut)
+    }
+    init(_ parent: CollectibleARView) { self.parent = parent }
+    func session(_ session: ARSession, didAdd anchors: [ARAnchor]) { placeInView() }
+    func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) { placeInView() }
+    private func placeInView() {
+      guard !placed, let view,
+        let hit = view.raycast(
+          from: CGPoint(x: view.bounds.midX, y: view.bounds.midY),
+          allowing: .existingPlaneGeometry, alignment: .horizontal
+        ).first
+      else { return }
+      let anchor = AnchorEntity(world: hit.worldTransform)
       do {
-        let object = try Entity.load(contentsOf: parent.fileURL)
-        let bounds = object.visualBounds(relativeTo: nil)
+        let model = try Entity.load(contentsOf: parent.fileURL)
+        let object = Entity()
+        object.addChild(model)
+        let bounds = model.visualBounds(relativeTo: object)
         let longest = max(bounds.extents.x, max(bounds.extents.y, bounds.extents.z))
         guard longest.isFinite, longest > 0.001 else {
           parent.onFailure("3D-objektet saknar giltig geometri.")
           return
         }
-        object.scale *= 1.5 / longest
+        let scale = 1.5 / longest
+        model.scale *= scale
+        model.position -= bounds.center * scale
         object.position = [0, 0.7, 0]
+        object.generateCollisionShapes(recursive: true)
+        self.object = object
         anchor.addChild(object)
         view.scene.addAnchor(anchor)
       } catch {
@@ -158,7 +229,16 @@ struct PizzaARView: UIViewRepresentable {
     func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
       if case .normal = camera.trackingState { parent.ready = placed } else { parent.ready = false }
     }
-    func sessionWasInterrupted(_ session: ARSession) { parent.ready = false }
-    func session(_ session: ARSession, didFailWithError error: Error) { parent.ready = false }
+    func sessionWasInterrupted(_ session: ARSession) {
+      parent.ready = false
+      parent.onHint("Kameran pausades. Rikta den mot samma yta igen.")
+    }
+    func sessionInterruptionEnded(_ session: ARSession) {
+      parent.onHint("Hitta samma yta igen genom att röra telefonen långsamt.")
+    }
+    func session(_ session: ARSession, didFailWithError error: Error) {
+      parent.ready = false
+      parent.onFailure("AR-spårningen avbröts. Tryck på Försök igen.")
+    }
   }
 }

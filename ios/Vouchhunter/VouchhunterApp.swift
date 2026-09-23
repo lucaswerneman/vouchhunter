@@ -216,12 +216,21 @@ struct HuntView: View {
   @State private var selected: Stop?
   @State private var error = ""
   @State private var busy = false
-  var body: some View {
+  @State private var captureCount = 0
+  @State private var showWallet = false
+  @State private var clock = Date()
+  @State private var showDetails = false
+  private var detailContent: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         Text(campaign.brand).font(.subheadline).foregroundStyle(.secondary)
         Text(campaign.title).font(.largeTitle.bold())
         Text(campaign.description).foregroundStyle(.secondary)
+        Label(
+          "Till \(Date(timeIntervalSince1970: campaign.ends).formatted(date: .abbreviated, time: .shortened))",
+          systemImage: "calendar"
+        )
+        .font(.subheadline).foregroundStyle(.secondary)
         VStack(alignment: .leading, spacing: 12) {
           Label(campaign.reward, systemImage: "ticket.fill").font(.title2.bold())
           Text("Samla \(campaign.target) objekt för att få din belöning.")
@@ -233,13 +242,17 @@ struct HuntView: View {
           Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
         if let hunt, hunt.completed != nil {
           Label("Du är klar! Din voucher finns i plånboken.", systemImage: "checkmark.seal.fill")
-            .foregroundStyle(.green)
-        } else if hunt == nil || (hunt?.expires ?? 0) < Date().timeIntervalSince1970 {
+            .foregroundStyle(Brand.accent)
+          Button("Visa min voucher", systemImage: "qrcode") { showWallet = true }
+            .buttonStyle(.borderedProminent)
+        } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
           Text(
             "En belöning reserveras i upp till 60 minuter, senast till kampanjens slut. Du behöver vara vid platserna för att samla."
           ).font(.footnote).foregroundStyle(.secondary)
           Button("Starta jakten") { Task { await start() } }.buttonStyle(.borderedProminent)
-            .disabled(busy)
+            .disabled(
+              busy || campaign.ends <= clock.timeIntervalSince1970
+                || campaign.starts > clock.timeIntervalSince1970)
         } else if let hunt {
           Text(
             "Reserverad till \(Date(timeIntervalSince1970:hunt.expires).formatted(date:.omitted,time:.shortened))"
@@ -253,7 +266,7 @@ struct HuntView: View {
           }
         }.frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 16))
         Text("Platser att upptäcka").font(.title2.bold())
-        ForEach(campaign.stops) { s in
+        ForEach(orderedStops) { s in
           HStack {
             VStack(alignment: .leading) {
               Text(s.name).font(.headline)
@@ -261,12 +274,18 @@ struct HuntView: View {
                 Text("\(Int(loc.distance(from:CLLocation(latitude:s.lat,longitude:s.lon)))) m bort")
                   .foregroundStyle(.secondary).font(.footnote)
               }
+              Text(collectionHint(s)).font(.caption).foregroundStyle(.secondary)
+              Button("Visa gångväg", systemImage: "figure.walk") { directions(s) }
+                .font(.subheadline)
             }
             Spacer()
             if hunt?.collected.contains(s.id) == true {
               Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
             } else {
-              Button("Samla") { selected = s }.buttonStyle(.bordered).disabled(!canCollect(s))
+              Button("Öppna AR") {
+                captureCount = hunt?.collected.count ?? 0
+                selected = s
+              }.buttonStyle(.bordered).disabled(!canCollect(s))
             }
           }.padding(.vertical, 10)
         }
@@ -278,19 +297,201 @@ struct HuntView: View {
           "Lös in hos \(campaign.venue). Vouchern gäller i \(campaign.voucher_days) dagar efter slutförd jakt."
         ).font(.footnote).foregroundStyle(.secondary)
       }.padding(22)
-    }.background(Color(.systemGroupedBackground)).navigationTitle("Jakten")
-      .navigationBarTitleDisplayMode(.inline)
-      .task {
+    }
+    .background(Color(.systemGroupedBackground))
+  }
+  var body: some View {
+    ZStack(alignment: .top) {
+      Map {
+        UserAnnotation()
+        ForEach(Array(campaign.stops.enumerated()), id: \.element.id) { index, stop in
+          Annotation(stop.name, coordinate: .init(latitude: stop.lat, longitude: stop.lon)) {
+            Button {
+              if canCollect(stop) {
+                captureCount = hunt?.collected.count ?? 0
+                selected = stop
+              } else {
+                showDetails = true
+              }
+            } label: {
+              ZStack {
+                Circle().fill(
+                  hunt?.collected.contains(stop.id) == true ? Color.secondary : Brand.accent
+                )
+                .frame(width: 48, height: 48)
+                .overlay(Circle().stroke(.white, lineWidth: 3))
+                .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+                if hunt?.collected.contains(stop.id) == true {
+                  Image(systemName: "checkmark").font(.headline.bold()).foregroundStyle(.white)
+                } else {
+                  Text("\(index + 1)").font(.system(.title3, design: .rounded, weight: .bold))
+                    .foregroundStyle(.white)
+                }
+              }
+            }.accessibilityLabel("\(stop.name), \(collectionHint(stop))")
+          }
+        }
+      }.mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
+        .mapControls { MapCompass() }.ignoresSafeArea(edges: .bottom)
+      VStack(spacing: 8) {
+        HStack {
+          VStack(alignment: .leading, spacing: 3) {
+            Text(campaign.brand).font(.caption.bold()).foregroundStyle(.secondary)
+            Text(campaign.title).font(.headline).lineLimit(2)
+          }
+          Spacer()
+          Text("\(hunt?.collected.count ?? 0)/\(campaign.target)")
+            .font(.system(.title, design: .rounded, weight: .bold)).monospacedDigit()
+            .contentTransition(.numericText())
+            .accessibilityLabel("\(hunt?.collected.count ?? 0) av \(campaign.target) insamlade")
+        }
+        ProgressView(value: Double(hunt?.collected.count ?? 0), total: Double(campaign.target))
+          .tint(Brand.accent)
+        HStack {
+          Label(campaign.reward, systemImage: "ticket.fill").font(.caption.bold())
+          Spacer()
+          Button("Om jakten", systemImage: "info.circle") { showDetails = true }.labelStyle(
+            .iconOnly)
+        }
+      }.padding(16).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+        .padding(.horizontal, 16).padding(.top, 8)
+    }
+    .safeAreaInset(edge: .bottom) {
+      VStack(alignment: .leading, spacing: 12) {
+        if hunt?.completed != nil {
+          Label("Jakten är klar!", systemImage: "checkmark.seal.fill").font(.title2.bold())
+          Text(campaign.reward).font(.headline)
+          Button("Hämta din belöning", systemImage: "ticket.fill") { showWallet = true }
+            .buttonStyle(.borderedProminent).controlSize(.large)
+        } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
+          Text(hunt == nil ? "Ditt nästa äventyr" : "Redo för en ny runda?").font(.title2.bold())
+          Text(
+            "Hitta \(campaign.target) föremål ute i staden. Samla dem i AR och lås upp \(campaign.reward.lowercased())."
+          )
+          .font(.subheadline)
+          Button {
+            Task { await start() }
+          } label: {
+            HStack {
+              if busy { ProgressView() }
+              Text("Starta jakten")
+              Image(systemName: "arrow.right")
+            }
+            .frame(maxWidth: .infinity)
+          }.buttonStyle(.borderedProminent).controlSize(.large)
+            .disabled(
+              busy || campaign.ends <= clock.timeIntervalSince1970
+                || campaign.starts > clock.timeIntervalSince1970)
+          Text(
+            "Belöningen reserveras i upp till 60 minuter. Håll koll på trafiken och din omgivning."
+          )
+          .font(.caption).foregroundStyle(.secondary)
+        } else if let next = orderedStops.first(where: { hunt?.collected.contains($0.id) != true })
+        {
+          Text("NÄSTA FYND").font(.caption.bold()).foregroundStyle(Brand.accent)
+          HStack {
+            Text(next.name).font(.title2.bold())
+            Spacer()
+            if let loc = location.location {
+              Text(
+                "\(Int(loc.distance(from: CLLocation(latitude: next.lat, longitude: next.lon)))) m"
+              )
+              .font(.system(.title2, design: .rounded, weight: .bold)).monospacedDigit()
+            }
+          }
+          Text(collectionHint(next)).font(.subheadline).foregroundStyle(.secondary)
+          HStack {
+            Button("Gångväg", systemImage: "figure.walk") { directions(next) }.buttonStyle(
+              .bordered)
+            Button("Öppna AR", systemImage: "viewfinder") {
+              captureCount = hunt?.collected.count ?? 0
+              selected = next
+            }.buttonStyle(.borderedProminent).disabled(!canCollect(next))
+            Spacer()
+            Button("Alla platser") { showDetails = true }.font(.subheadline)
+          }
+          if let hunt {
+            Text(
+              "Reserverad till \(Date(timeIntervalSince1970: hunt.expires).formatted(date: .omitted, time: .shortened))"
+            ).font(.caption).foregroundStyle(.secondary)
+          }
+        }
+        if !error.isEmpty { Text(error).font(.footnote).foregroundStyle(.red) }
+        if let message = location.message {
+          Text(message).font(.caption).foregroundStyle(.secondary)
+        }
+      }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+          .regularMaterial, in: UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
+    }
+    .navigationTitle("Jakten").navigationBarTitleDisplayMode(.inline)
+    .sheet(isPresented: $showDetails) {
+      NavigationStack {
+        detailContent.navigationTitle("Om jakten").navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .confirmationAction) { Button("Klart") { showDetails = false } }
+          }
+      }.presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+    }
+    .task {
+      location.start()
+      do {
+        let r: HuntEnvelope = try await API.shared.request("/hunts/" + campaign.id)
+        hunt = r.hunt
+      } catch { self.error = error.localizedDescription }
+    }
+    .task {
+      while !Task.isCancelled {
+        clock = Date()
+        do { try await Task.sleep(for: .seconds(5)) } catch { return }
+      }
+    }
+    .sheet(isPresented: $showWallet) {
+      WalletView().overlay(alignment: .topTrailing) {
+        Button("Stäng") { showWallet = false }.padding()
+      }
+    }
+    .onDisappear { if selected == nil { location.stop() } }
+    .fullScreenCover(
+      item: $selected,
+      onDismiss: {
         location.start()
-        do {
-          let r: HuntEnvelope = try await API.shared.request("/hunts/" + campaign.id)
-          hunt = r.hunt
-        } catch { self.error = error.localizedDescription }
+        if hunt?.completed != nil { showWallet = true }
       }
-      .onDisappear { if selected == nil { location.stop() } }
-      .fullScreenCover(item: $selected, onDismiss: { location.start() }) { s in
-        CaptureView(stop: s, model: campaign.model) { try await collect(s) }
-      }
+    ) { s in
+      CaptureView(
+        stop: s, model: campaign.model, collectedCount: captureCount, target: campaign.target
+      ) { try await collect(s) }
+    }
+  }
+  private var orderedStops: [Stop] {
+    campaign.stops.sorted { a, b in
+      let aCollected = hunt?.collected.contains(a.id) == true
+      let bCollected = hunt?.collected.contains(b.id) == true
+      if aCollected != bCollected { return !aCollected }
+      guard let loc = location.location else { return a.name < b.name }
+      return loc.distance(from: CLLocation(latitude: a.lat, longitude: a.lon))
+        < loc.distance(from: CLLocation(latitude: b.lat, longitude: b.lon))
+    }
+  }
+  private func collectionHint(_ stop: Stop) -> String {
+    if hunt?.collected.contains(stop.id) == true { return "Redan i din samling" }
+    if hunt?.completed != nil { return "Jakten är slutförd" }
+    guard let hunt else { return "Starta jakten för att samla" }
+    if hunt.expires <= clock.timeIntervalSince1970 { return "Reservationen har gått ut" }
+    guard let loc = location.location, loc.horizontalAccuracy >= 0, loc.horizontalAccuracy <= 35,
+      abs(loc.timestamp.timeIntervalSinceNow) < 45
+    else { return "Väntar på en noggrann GPS-position" }
+    return canCollect(stop)
+      ? "Du är framme – öppna kameran" : "Gå inom \(stop.radius) meter för att samla"
+  }
+  private func directions(_ stop: Stop) {
+    let destination = MKMapItem(
+      placemark: MKPlacemark(coordinate: .init(latitude: stop.lat, longitude: stop.lon)))
+    destination.name = stop.name
+    destination.openInMaps(launchOptions: [
+      MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+    ])
   }
   private func canCollect(_ stop: Stop) -> Bool {
     guard let hunt, hunt.completed == nil, hunt.expires > Date().timeIntervalSince1970,

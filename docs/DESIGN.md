@@ -30,3 +30,11 @@ Webbportalen använder systemfont, ljus sidonavigation och grupperade ytor med s
 ## Kund och admin
 
 Kund betyder företaget som köper kampanjen. Kunden ser översikt, kampanjer, betalningar och inlösen, och skickar en enkel brief. Plattformens admin konfigurerar platser, 3D-objekt och publicering. Kunden ska inte exponeras för koordinatfält eller filformat.
+
+## Spelarens upplevelse: spel före arbetsapp
+
+Spelaren ska möta en värld att utforska, inte en dashboard. Kampanjjakten använder en karta som huvudvy, numrerade fynd, en kompakt samlingsmätare och nästa mål nära tummen. Kampanjtext och villkor ligger i en separat native sheet. Inga påhittade XP, topplistor eller falsk aktivitet.
+
+AR använder kampanjens riktiga modell. Objektet placeras på en identifierad horisontell yta i kamerans riktning, går att trycka på och krymper bort efter serverbekräftad insamling. Haptisk respons markerar fyndet; sista fyndet leder till belöningen. Knappen finns kvar som tillgängligt alternativ till att träffa objektet.
+
+Teknisk referens: [Apple RealityKit – ARView](https://developer.apple.com/documentation/RealityKit/ARView) för träfftestning och raycast. Det är lokal ytplacering inom en GPS-zon, inte ännu ett permanent geospatialt ankare som alla ser på exakt samma punkt. Modellstorleken är fortfarande normaliserad till 1,5 meter. Nästa kvalitetssteg är fysisk AR-verifiering, kampanjstyrd skala, objektens rörelse/ljud och motsvarande spelvy på Android.
