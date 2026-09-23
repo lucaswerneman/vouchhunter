@@ -1,5 +1,6 @@
 import HuntCore
 import MapKit
+import SceneKit
 import SwiftUI
 
 @main struct VouchhunterApp: App {
@@ -247,6 +248,64 @@ struct ExploreView: View {
     } catch { self.error = error.localizedDescription }
   }
 }
+/// One static 3D scene on the map. The active campaign uses its uploaded USDZ.
+struct CollectibleMapObject: UIViewRepresentable {
+  let url: URL?
+  let pizzaPreview: Bool
+  func makeUIView(context: Context) -> SCNView {
+    let view = SCNView()
+    view.backgroundColor = .clear
+    view.autoenablesDefaultLighting = true
+    view.isUserInteractionEnabled = false
+    view.antialiasingMode = .multisampling4X
+    let scene = SCNScene()
+    let object = SCNNode()
+    if pizzaPreview {
+      func disc(
+        _ radius: CGFloat, _ height: CGFloat, _ color: UIColor, _ x: Float, _ y: Float, _ z: Float
+      ) {
+        let geometry = SCNCylinder(radius: radius, height: height)
+        geometry.radialSegmentCount = 48
+        geometry.firstMaterial?.diffuse.contents = color
+        geometry.firstMaterial?.roughness.contents = 0.8
+        let node = SCNNode(geometry: geometry)
+        node.position = SCNVector3(x, y, z)
+        object.addChildNode(node)
+      }
+      disc(0.68, 0.12, UIColor(red: 0.76, green: 0.39, blue: 0.12, alpha: 1), 0, 0, 0)
+      disc(0.59, 0.04, UIColor(red: 1, green: 0.76, blue: 0.25, alpha: 1), 0, 0.08, 0)
+      for i in 0..<6 {
+        let angle = Float(i) * .pi / 3
+        disc(
+          0.09, 0.016, UIColor(red: 0.76, green: 0.14, blue: 0.08, alpha: 1), cos(angle) * 0.36,
+          0.112, sin(angle) * 0.36)
+      }
+    } else if let url, let loaded = try? SCNScene(url: url) {
+      for node in loaded.rootNode.childNodes { object.addChildNode(node) }
+      let (minimum, maximum) = object.boundingBox
+      let longest = max(maximum.x - minimum.x, max(maximum.y - minimum.y, maximum.z - minimum.z))
+      if longest.isFinite && longest > 0 {
+        let scale: Float = 1.4 / longest
+        object.scale = SCNVector3(scale, scale, scale)
+        object.position = SCNVector3(
+          -(minimum.x + maximum.x) * scale / 2, -(minimum.y + maximum.y) * scale / 2,
+          -(minimum.z + maximum.z) * scale / 2)
+      }
+    }
+    scene.rootNode.addChildNode(object)
+    let camera = SCNNode()
+    camera.camera = SCNCamera()
+    camera.position = SCNVector3(0, 2.3, 2.7)
+    camera.look(at: SCNVector3Zero)
+    camera.camera?.usesOrthographicProjection = true
+    camera.camera?.orthographicScale = 0.95
+    scene.rootNode.addChildNode(camera)
+    view.scene = scene
+    view.pointOfView = camera
+    return view
+  }
+  func updateUIView(_ view: SCNView, context: Context) {}
+}
 struct HuntView: View {
   let campaign: Campaign
   private var isPreview: Bool {
@@ -265,6 +324,21 @@ struct HuntView: View {
   @State private var showWallet = false
   @State private var clock = Date()
   @State private var showDetails = false
+  @State private var mapPosition: MapCameraPosition = .automatic
+  @State private var thumbnailURL: URL?
+  @State private var focusedStopID: String?
+  private var nextStop: Stop? {
+    let available = orderedStops.filter { hunt?.collected.contains($0.id) != true }
+    return available.first { $0.id == focusedStopID } ?? available.first
+  }
+  private var objectName: String { isPreview ? "Pizza" : campaign.model?.name ?? "Föremål" }
+  private func focusNext() {
+    guard let next = nextStop else { return }
+    mapPosition = .camera(
+      MapCamera(
+        centerCoordinate: .init(latitude: next.lat, longitude: next.lon), distance: 850,
+        heading: 20, pitch: 48))
+  }
   private var detailContent: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
@@ -347,78 +421,70 @@ struct HuntView: View {
   }
   var body: some View {
     ZStack(alignment: .top) {
-      Map {
+      Map(position: $mapPosition) {
         UserAnnotation()
-        ForEach(Array(campaign.stops.enumerated()), id: \.element.id) { index, stop in
+        ForEach(campaign.stops.filter { hunt?.collected.contains($0.id) != true }) { stop in
           Annotation(stop.name, coordinate: .init(latitude: stop.lat, longitude: stop.lon)) {
-            Button {
-              if canCollect(stop) {
-                captureCount = hunt?.collected.count ?? 0
-                selected = stop
-              } else {
-                showDetails = true
-              }
-            } label: {
-              ZStack {
-                Circle().fill(
-                  hunt?.collected.contains(stop.id) == true ? Color.secondary : HuntStyle.green
-                )
-                .frame(width: 48, height: 48)
-                .overlay(Circle().stroke(.white, lineWidth: 3))
-                .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
-                if hunt?.collected.contains(stop.id) == true {
-                  Image(systemName: "checkmark").font(.headline.bold()).foregroundStyle(.white)
+            if stop.id == nextStop?.id {
+              Button {
+                if canCollect(stop) {
+                  captureCount = hunt?.collected.count ?? 0
+                  selected = stop
                 } else {
-                  Text("\(index + 1)").font(.system(.title3, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
+                  showDetails = true
                 }
-              }
-            }.accessibilityLabel("\(stop.name), \(collectionHint(stop))")
-          }
-        }
-      }.mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
-        .mapControls { MapCompass() }.ignoresSafeArea(edges: .bottom)
-      VStack(spacing: 8) {
-        HStack {
-          VStack(alignment: .leading, spacing: 3) {
-            Text(campaign.brand).font(.caption.bold()).foregroundStyle(.secondary)
-            Text(campaign.title).font(.headline).lineLimit(2)
-          }
-          Spacer()
-          Text("\(hunt?.collected.count ?? 0)/\(campaign.target)")
-            .font(.system(.title, design: .rounded, weight: .bold)).monospacedDigit()
-            .foregroundStyle(HuntStyle.green)
-            .contentTransition(.numericText())
-            .accessibilityLabel("\(hunt?.collected.count ?? 0) av \(campaign.target) insamlade")
-        }
-        if campaign.target <= 10 {
-          HStack(spacing: 6) {
-            ForEach(0..<campaign.target, id: \.self) { index in
-              RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(index < (hunt?.collected.count ?? 0) ? HuntStyle.green : HuntStyle.mint)
-                .frame(height: 18)
-                .overlay {
-                  if index < (hunt?.collected.count ?? 0) {
-                    Image(systemName: "checkmark").font(.system(size: 9, weight: .heavy))
-                      .foregroundStyle(.white)
+              } label: {
+                VStack(spacing: 0) {
+                  if isPreview || thumbnailURL != nil {
+                    CollectibleMapObject(url: thumbnailURL, pizzaPreview: isPreview).frame(
+                      width: 112, height: 108
+                    ).allowsHitTesting(false)
+                  } else {
+                    Image(systemName: "cube.fill").font(.system(size: 42)).foregroundStyle(
+                      HuntStyle.green
+                    )
+                    .padding(20).background(HuntStyle.surface, in: Circle())
                   }
+                  Text(objectName).font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .foregroundStyle(.primary).padding(.horizontal, 14).padding(.vertical, 7)
+                    .background(HuntStyle.surface, in: Capsule())
                 }
+              }.accessibilityLabel("\(objectName), \(stop.name), \(collectionHint(stop))")
+            } else {
+              Button {
+                focusedStopID = stop.id
+                focusNext()
+              } label: {
+                Circle().fill(HuntStyle.green.opacity(0.5)).frame(width: 12, height: 12)
+                  .overlay(Circle().stroke(.white, lineWidth: 2)).frame(width: 44, height: 44)
+              }.accessibilityLabel("Visa fynd vid \(stop.name)")
             }
-          }.accessibilityHidden(true)
-        } else {
-          ProgressView(value: Double(hunt?.collected.count ?? 0), total: Double(campaign.target))
-            .tint(HuntStyle.green)
+          }.annotationTitles(.hidden)
         }
-        HStack {
-          Label(campaign.reward, systemImage: "ticket.fill").font(.caption.bold())
-          Spacer()
-          Button("Om jakten", systemImage: "info.circle") { showDetails = true }.labelStyle(
-            .iconOnly)
-        }
-      }.padding(16).background(
-        HuntStyle.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+      }.mapStyle(
+        .standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll)
       )
-      .padding(.horizontal, 16).padding(.top, 8)
+      .mapControls {}.ignoresSafeArea(edges: .bottom)
+      HStack {
+        Button {
+          showDetails = true
+        } label: {
+          HStack(spacing: 10) {
+            Text("\(hunt?.collected.count ?? 0) / \(campaign.target)").font(
+              .system(.headline, design: .rounded, weight: .bold))
+            Text("insamlade").font(.subheadline).foregroundStyle(.secondary)
+          }.padding(.horizontal, 18).frame(height: 48)
+            .background(HuntStyle.surface, in: Capsule())
+        }.buttonStyle(.plain).accessibilityLabel(
+          "Din samling, \(hunt?.collected.count ?? 0) av \(campaign.target). Visa kampanjdetaljer")
+        Spacer()
+        Button {
+          focusNext()
+        } label: {
+          Image(systemName: "scope").font(.title3).frame(width: 48, height: 48)
+            .background(HuntStyle.surface, in: Circle())
+        }.accessibilityLabel("Centrera nästa fynd")
+      }.padding(.horizontal, 20).padding(.top, 8)
     }
     .safeAreaInset(edge: .bottom) {
       VStack(alignment: .leading, spacing: 12) {
@@ -450,8 +516,7 @@ struct HuntView: View {
             "Belöningen reserveras i upp till 60 minuter. Håll koll på trafiken och din omgivning."
           )
           .font(.caption).foregroundStyle(.secondary)
-        } else if let next = orderedStops.first(where: { hunt?.collected.contains($0.id) != true })
-        {
+        } else if let next = nextStop {
           HStack {
             Label("Nästa fynd", systemImage: "sparkle").font(.subheadline.weight(.semibold))
               .foregroundStyle(HuntStyle.green)
@@ -460,7 +525,7 @@ struct HuntView: View {
               .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
           }
           HStack {
-            Text(next.name).font(.system(.largeTitle, design: .rounded, weight: .bold))
+            Text(next.name).font(.system(.title2, design: .rounded, weight: .bold))
               .minimumScaleFactor(0.8)
             Spacer()
             if let loc = location.location {
@@ -470,7 +535,9 @@ struct HuntView: View {
               .font(.system(.title2, design: .rounded, weight: .bold)).monospacedDigit()
             }
           }
-          Text(collectionHint(next)).font(.subheadline).foregroundStyle(.secondary)
+          Text(isPreview ? "\(objectName) · exempel på nästa fynd" : collectionHint(next)).font(
+            .subheadline
+          ).foregroundStyle(.secondary)
           if canCollect(next) {
             Button("Samla i AR", systemImage: "viewfinder") {
               captureCount = hunt?.collected.count ?? 0
@@ -484,11 +551,11 @@ struct HuntView: View {
               if isPreview { showDetails = true } else { directions(next) }
             }.buttonStyle(HuntPillButton())
           }
-          if let hunt {
-            Text(
-              "Reserverad till \(Date(timeIntervalSince1970: hunt.expires).formatted(date: .omitted, time: .shortened))"
-            ).font(.caption).foregroundStyle(.secondary)
-          }
+          Label(
+            "\(max(0, campaign.target - (hunt?.collected.count ?? 0))) fynd kvar · \(campaign.reward)",
+            systemImage: "ticket"
+          )
+          .font(.caption.weight(.medium)).foregroundStyle(.secondary)
         }
         if !error.isEmpty { Text(error).font(.footnote).foregroundStyle(.red) }
         if let message = location.message {
@@ -518,6 +585,7 @@ struct HuntView: View {
       if isPreview {
         #if DEBUG && targetEnvironment(simulator)
           hunt = SimulatorHunt.hunt
+          focusNext()
         #endif
         return
       }
@@ -525,8 +593,14 @@ struct HuntView: View {
       do {
         let r: HuntEnvelope = try await API.shared.request("/hunts/" + campaign.id)
         hunt = r.hunt
+        focusNext()
       } catch { self.error = error.localizedDescription }
     }
+    .task {
+      guard !isPreview, let model = campaign.model else { return }
+      thumbnailURL = try? await API.shared.modelFile(assetID: model.usdz_asset_id)
+    }
+    .onChange(of: hunt?.collected.count) { _, _ in focusNext() }
     .task {
       while !Task.isCancelled {
         clock = Date()
@@ -556,7 +630,10 @@ struct HuntView: View {
       let aCollected = hunt?.collected.contains(a.id) == true
       let bCollected = hunt?.collected.contains(b.id) == true
       if aCollected != bCollected { return !aCollected }
-      guard let loc = location.location else { return a.name < b.name }
+      guard let loc = location.location else {
+        return (campaign.stops.firstIndex(where: { $0.id == a.id }) ?? 0)
+          < (campaign.stops.firstIndex(where: { $0.id == b.id }) ?? 0)
+      }
       return loc.distance(from: CLLocation(latitude: a.lat, longitude: a.lon))
         < loc.distance(from: CLLocation(latitude: b.lat, longitude: b.lon))
     }

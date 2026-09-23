@@ -52,3 +52,9 @@ Användaren har valt Family. Refero tillgängligt igen: stil `fd409745-cef9-4cb2
 | Samling visas som fyllda platser | Användarens spelkrav | Upp till tio visuella markeringar; större mål behåller numerisk progress |
 
 Avvisat: webbplatsens serifrubriker och dekorativa karaktärer överförs inte till appens kontroller. Kartan är fortsatt huvudmedia. Inga kopierade illustrationer, inga falska belöningar. Ytor följer systemets mörka läge; animationer respekterar Reduce Motion.
+
+## Avskalad spelkarta och kupongjakt
+
+Användarens Amo-kartbild styr perspektivet: nära, vinklad karta med tydligt föremål. MapKit använder dämpad standardstil utan POI-etiketter. Ett valt fynd visas med kampanjens USDZ i en statisk 3D-vy; andra tillgängliga platser är små valbara punkter. Insamlade platser lämnar kartan. Samlingspill och centreringsknapp ersätter den stora övre panelen. Nästa-fynd-panelen visar återstående steg och konkret belöning. Förhandsvisningens pizza är en lokal procedurmodell, inte ett uppladdat kundobjekt.
+
+Produktloopen är en spelifierad kuponginsamling: upptäck kampanj → gå till föremål → öppna möte → samla → åter till karta → lås upp kupong → lös in. Pokémon GO är referens för kartans upptäckt/möte, inte för grafiska tillgångar eller hela progressionsekonomin. [Niantics AR-beskrivning](https://niantic.helpshift.com/hc/en/6-pokemon-go/faq/28-catching-pokemon-in-ar-mode-1712012768/) skiljer verklig kamera-AR från kartvyn. Inga kast, strider eller nivåkrav införs i Vouchhunter. Kupongen och återstående fynd ska vara läsbara under hela jakten.

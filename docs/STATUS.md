@@ -66,3 +66,6 @@ Välj Xcode-schemat `Vouchhunter Preview` och destinationen `Vouchhunter iPhone 
 
 ## Family-referens
 Referos Family-appskärmar har nu granskats visuellt. Kampanjjakten använder solida systemytor, rundad systemtypografi, tydlig grön primärknapp och en samling med fyllda platser. Karta och native sheets bevaras. Simulatorns kampanjvy och öppning av detaljer är visuellt verifierade. AR-knappens formspråk är harmoniserat; kamera-AR är fortsatt inte verifierad i simulator.
+
+## Avskalad karta
+Vinklad, dämpad 3D-karta och ett aktivt föremål ersätter stora nummermarkörer. Den lokala pizzaförhandsvisningen har visuellt verifierats i simulator. Verkliga kampanjer laddar sin USDZ till kartmarkören; godtyckliga uppladdade modellformat behöver fortsatt enhetstestning. Kundens belöning och återstående fynd visas i spelpanelen.
