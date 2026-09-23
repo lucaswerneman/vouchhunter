@@ -35,13 +35,18 @@ struct CaptureView: View {
           Button {
             dismiss()
           } label: {
-            Image(systemName: "xmark").padding(14).background(.ultraThinMaterial, in: Circle())
+            Image(systemName: "xmark").padding(14).background(HuntStyle.canvas, in: Circle())
+              .overlay(Circle().stroke(HuntStyle.line, lineWidth: 0.5))
           }.accessibilityLabel("Stäng kameran")
           Spacer()
-          Text(stop.name).font(.headline).padding(12).background(.ultraThinMaterial, in: Capsule())
+          Text(stop.name).font(.headline).padding(12).background(
+            HuntStyle.canvas, in: RoundedRectangle(cornerRadius: 8)
+          ).overlay(RoundedRectangle(cornerRadius: 8).stroke(HuntStyle.line, lineWidth: 0.5))
         }
         Text("\(min(target, collectedCount + (success ? 1 : 0))) av \(target) insamlade")
-          .font(.subheadline.bold()).padding(12).background(.ultraThinMaterial, in: Capsule())
+          .font(.subheadline.bold()).padding(12).background(
+            HuntStyle.canvas, in: RoundedRectangle(cornerRadius: 8)
+          ).overlay(RoundedRectangle(cornerRadius: 8).stroke(HuntStyle.line, lineWidth: 0.5))
         Spacer()
         if allowed && modelURL == nil && error.isEmpty {
           ProgressView("Laddar ditt 3D-objekt…").tint(.white).foregroundStyle(.white)
@@ -50,11 +55,13 @@ struct CaptureView: View {
           Label(
             collectedCount + 1 >= target ? "Belöningen är din!" : "Insamlad!",
             systemImage: "checkmark.circle.fill"
-          ).font(.largeTitle.bold())
+          ).font(.system(.largeTitle, design: .monospaced))
             .foregroundStyle(.white)
         } else {
-          Text(ready ? "Där är ditt fynd." : "Rikta kameran mot en öppen yta.").font(.title2.bold())
-            .foregroundStyle(.white)
+          Text(ready ? "Där är ditt fynd." : "Rikta kameran mot en öppen yta.").font(
+            .system(.title2, design: .monospaced)
+          )
+          .foregroundStyle(.white)
           Text(
             ready
               ? "Tryck på 3D-objektet eller knappen för att samla."
@@ -70,14 +77,14 @@ struct CaptureView: View {
             error = ""
             ready = false
             if modelURL != nil { sessionID = UUID() } else { Task { await loadModel() } }
-          }.buttonStyle(.borderedProminent)
+          }.buttonStyle(HuntSecondaryButton())
         }
         if !allowed && !error.isEmpty {
           Button("Öppna inställningar") {
             if let url = URL(string: UIApplication.openSettingsURLString) {
               UIApplication.shared.open(url)
             }
-          }.buttonStyle(.borderedProminent)
+          }.buttonStyle(HuntSecondaryButton())
         }
         Button {
           Task { await capture() }

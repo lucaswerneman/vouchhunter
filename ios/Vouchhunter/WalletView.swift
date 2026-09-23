@@ -3,6 +3,9 @@ import HuntCore
 import SwiftUI
 
 struct WalletView: View {
+  #if DEBUG && targetEnvironment(simulator)
+    @ObservedObject private var simulator = SimulatorStore.shared
+  #endif
   @State private var vouchers: [Voucher] = []
   @State private var error: String?
   @State private var loading = true
@@ -15,7 +18,7 @@ struct WalletView: View {
             ContentUnavailableView(
               "Kunde inte hämta vouchers", systemImage: "wifi.exclamationmark",
               description: Text(error))
-            Button("Försök igen") { Task { await load() } }
+            Button("Försök igen") { Task { await load() } }.buttonStyle(HuntPillButton())
           }
           if !loading && error == nil && vouchers.isEmpty {
             ContentUnavailableView(
@@ -24,9 +27,16 @@ struct WalletView: View {
           }
           ForEach(vouchers) { v in
             VStack(alignment: .leading, spacing: 16) {
-              Text(v.title ?? "Din belöning").font(.headline).foregroundStyle(.secondary)
-              Text(v.reward ?? "Voucher").font(.title.bold())
-              if v.isValid, let image = qr(v.code) {
+              Text((v.title ?? "Din belöning").uppercased()).font(.subheadline).foregroundStyle(
+                .secondary)
+              HuntRule()
+              Text((v.reward ?? "Kupong").uppercased()).font(.system(.title2, design: .monospaced))
+              if SimulatorMode.active {
+                Label("TESTKUPONG · EJ GILTIG FÖR INLÖSEN", systemImage: "testtube.2").font(
+                  .footnote
+                ).foregroundStyle(HuntStyle.electric)
+              }
+              if v.isValid && !SimulatorMode.active, let image = qr(v.code) {
                 Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(
                   width: 210, height: 210
                 ).frame(maxWidth: .infinity).accessibilityLabel("QR-kod för inlösen")
@@ -42,14 +52,30 @@ struct WalletView: View {
               ).font(.footnote)
               if v.isValid { Text(v.code).font(.caption.monospaced()).textSelection(.enabled) }
               if let terms = v.terms { Text(terms).font(.footnote).foregroundStyle(.secondary) }
-            }.padding(24).frame(maxWidth: .infinity, alignment: .leading).background(
-              Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
+            }.huntPanel()
           }
         }.padding(20)
-      }.navigationTitle("Dina vouchers").task { await load() }.refreshable { await load() }
+      }.background(HuntStyle.canvas).navigationTitle("DINA KUPONGER").navigationBarTitleDisplayMode(
+        .inline
+      ).task { await load() }.refreshable { await load() }
+        #if DEBUG && targetEnvironment(simulator)
+          .onReceive(simulator.$hunt) { hunt in
+            if SimulatorMode.active {
+              vouchers = hunt?.voucher.map { [$0] } ?? []
+              loading = false
+            }
+          }
+        #endif
     }
   }
   private func load() async {
+    #if DEBUG && targetEnvironment(simulator)
+      if SimulatorMode.active {
+        vouchers = simulator.voucher.map { [$0] } ?? []
+        loading = false
+        return
+      }
+    #endif
     loading = true
     defer { loading = false }
     do {

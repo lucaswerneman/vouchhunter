@@ -69,3 +69,10 @@ Referos Family-appskärmar har nu granskats visuellt. Kampanjjakten använder so
 
 ## Avskalad karta
 Vinklad, dämpad 3D-karta och ett aktivt föremål ersätter stora nummermarkörer. Den lokala pizzaförhandsvisningen har visuellt verifierats i simulator. Verkliga kampanjer laddar sin USDZ till kartmarkören; godtyckliga uppladdade modellformat behöver fortsatt enhetstestning. Kundens belöning och återstående fynd visas i spelpanelen.
+
+## Gemensam design och interaktiv simulator
+- Ordinarie iOS-flöde använder nu mörk monospaced design med gemensamma knappar, konturer och paneler: inloggning, upptäckt, kampanjdetaljer, jakt, AR, kuponger och konto.
+- `Vouchhunter Preview` öppnar nu flikarna Jakten, Upptäck, Kuponger och Testläge. Lokala insamlingar uppdaterar samma Hunt-/Voucher-modeller som produktvyerna använder. Efter tio fynd skapas en tydligt ogiltig testkupong utan QR-kod. Omstart, utgången reservation och simulerad inlösen finns under Testläge.
+- Testdata finns bara i processminnet och återställs vid omstart. SimulatorStore och simulatorns mötesvy kompileras endast för Debug + simulator. Ingen server, betalning, behörighet eller riktig voucher påverkas.
+- Android och webbportalen har samma grundläggande designroller. Androids spelvy och fysisk AR behöver fortsatt mer arbete och separat visuell enhetsverifiering.
+- Xcode Debug-simulatorbygge godkänt. Insamling och återgång till karta visuellt verifierade. Portalens översikt och betalningsvy visuellt granskade.

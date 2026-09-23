@@ -68,3 +68,20 @@ Användaren preciserade referensen till [MSCHF Bar & Grill & E-commerce i Refero
 Användaren har låst MSCHF som huvudreferens och vill även ha mörk karta. Jaktvyn använder därför mörkt färgschema även för MapKit, med bibehållen realistisk höjd, dämpade kartetiketter och färgat 3D-föremål. Lime reserveras för spelarens primärhandling; kupongmålet ligger kvar i panelen.
 
 Accentprecisering: användaren vill följa MSCHF-referensen nära men ersätta gult med grönt. Primärknapp och spelaccent använder nu klart grönt (sRGB 0.18, 0.95, 0.42), inte gulgrön lime.
+
+## Korrigering efter MSCHF-korgreferensen
+Tidigare version behöll för mycket av Family. Den senaste användarbilden låser istället panelernas faktiska struktur: tunn ljus ytterlinje, vertikal avdelare mellan objekt och fakta, jämnstor reguljär monospaced text, understruken VISA-länk, horisontella linjer mellan samlings-/belöningsrader och en separat grön pillknapp. Den stora flytande rundade fyndpanelen ersätts av en svart yta från kant till kant. Kartan och föremålets rendering bevaras.
+
+## Gemensamt produktsystem (gällande riktning)
+Denna riktning ersätter äldre ljusa/Family-dominerade beslut ovan. Användaren vill ha en egen kombination, med MSCHF:s tydliga struktur som huvudreferens. Native navigation och mjuka primärknappar är kvar; stora rundade standardkort är inte basen.
+
+| Roll | Gemensamt beslut | Källa |
+|---|---|---|
+| Bakgrund | Svart, mörkgrå produktpaneler | Användarens MSCHF-korgbild |
+| Typografi | Reguljär systemmonospace, korta versala etiketter; löptext får behålla normal skrift | MSCHF-bilderna och läsbarhetskrav |
+| Struktur | Tunna ljusa avdelare, 12-punkters panelradie, produkt/fakta uppdelat | Korgreferensen |
+| Handling | Grön pillknapp, svart text; sekundärt tunn kontur | Egen accent + begränsad Family-inspiration |
+| Spelvärld | Mörk vinklad riktig karta, färgat föremål | Användarens kartreferens |
+| Företagsportal | Samma färg-/typografifamilj, arbetsyta med tabeller och formulär | Separata kund/admin-uppgifter |
+
+iOS använder delade HuntStyle, HuntPillButton, HuntSecondaryButton, HuntRule och huntPanel. Appens ordinarie rot applicerar temat även utanför simulatorn. Android använder HuntStyle för text/knappar och mörk kartstil. Webbens tidigare ljusa override-lager har ersatts av samma färgroller. Detta är en gemensam visuell grund; Androids spelinteraktioner är ännu inte likvärdiga med iOS.

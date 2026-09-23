@@ -1,19 +1,19 @@
+/* Vouchhunter: dark canvas, regular mono labels, fine rules, green actions. */
 :root {
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  color: #172e28;
-  background: #f5f7f6;
+  color-scheme: dark;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 16px;
-  --ink: #172e28;
-  --muted: #64716d;
-  --line: #dce3df;
-  --green: #16392e;
-  --lime: #d9f46c;
+  --ink: #f5f5f5;
+  --muted: #b9b9b9;
+  --line: #686868;
+  --green: #2ef26b;
+  --lime: var(--green);
+  --canvas: #000;
+  --surface: #1f1f1f;
+  color: var(--ink);
+  background: var(--canvas);
 }
+
 * {
   box-sizing: border-box;
 }
@@ -34,15 +34,15 @@ button {
   cursor: pointer;
   min-height: 44px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   border-radius: 9px;
   padding: 11px 18px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.01em;
 }
 button:hover {
-  background: #eef2ef;
+  background: #303030;
 }
 button:disabled {
   cursor: wait;
@@ -51,14 +51,14 @@ button:disabled {
 .primary {
   background: var(--lime);
   border-color: var(--lime);
-  color: #193326;
+  color: #000;
 }
 .primary:hover {
-  background: #cae960;
+  background: #62f58e;
 }
 .dark {
   background: var(--green);
-  color: white;
+  color: #000;
 }
 .ghost {
   background: transparent;
@@ -86,7 +86,7 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid #789f15;
+  outline: 2px solid var(--green);
   outline-offset: 3px;
 }
 .shell {
@@ -95,8 +95,8 @@ select:focus-visible {
   min-height: 100vh;
 }
 .sidebar {
-  background: #142d27;
-  color: #c5d4ce;
+  background: var(--surface);
+  color: var(--muted);
   padding: 30px 20px;
   display: flex;
   flex-direction: column;
@@ -111,7 +111,7 @@ select:focus-visible {
   align-items: center;
   color: #fff;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.035em;
 }
 .brandmark {
@@ -121,11 +121,11 @@ select:focus-visible {
   height: 36px;
   border-radius: 10px;
   background: var(--lime);
-  color: #142d27;
+  color: #000;
   font-size: 25px;
 }
 .workspace {
-  border: 1px solid #3c514b;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px;
   font-size: 14px;
@@ -133,7 +133,7 @@ select:focus-visible {
 }
 .workspace small {
   display: block;
-  color: #a3b7ae;
+  color: var(--muted);
   font-size: 12px;
   letter-spacing: 0.02em;
 }
@@ -148,21 +148,21 @@ select:focus-visible {
   align-items: center;
   background: transparent;
   border: 0;
-  color: #b9ccc2;
+  color: var(--muted);
   font-weight: 500;
 }
 .nav button.active {
-  background: #29463a;
+  background: #26352a;
   color: var(--lime);
 }
 .sidebar footer {
   margin-top: auto;
-  border-top: 1px solid #395047;
+  border-top: 1px solid var(--line);
   padding-top: 20px;
   font-size: 13px;
 }
 .sidebar footer button {
-  color: #cad6d0;
+  color: var(--muted);
 }
 .main {
   padding: 0 48px 48px;
@@ -183,9 +183,9 @@ select:focus-visible {
   place-items: center;
   width: 36px;
   height: 36px;
-  background: #e4eadf;
+  background: var(--surface);
   border-radius: 50%;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--green);
 }
 .account {
@@ -204,7 +204,7 @@ select:focus-visible {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--muted);
 }
 h1 {
@@ -231,7 +231,7 @@ p {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   margin-bottom: 32px;
 }
@@ -249,7 +249,7 @@ p {
 .metric strong {
   display: block;
   font-size: 32px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: -0.03em;
   margin: 12px 0 4px;
   font-variant-numeric: tabular-nums;
@@ -274,14 +274,14 @@ p {
   padding: 8px 12px;
 }
 .tabs button.active {
-  background: #e4eadf;
+  background: var(--surface);
   color: var(--green);
 }
 .search {
   max-width: 260px;
 }
 .panel {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
@@ -302,8 +302,8 @@ p {
   border-radius: 16px;
   width: 64px;
   height: 64px;
-  background: #f7f9f3;
-  color: #395d3b;
+  background: var(--surface);
+  color: var(--green);
   margin-bottom: 12px;
 }
 .empty p {
@@ -326,14 +326,14 @@ th {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--muted);
-  background: #fbfcfb;
+  background: var(--surface);
 }
 th,
 td {
   padding: 20px;
-  border-bottom: 1px solid #edf0ed;
+  border-bottom: 1px solid var(--line);
 }
 td strong {
   display: block;
@@ -345,16 +345,16 @@ td small {
 }
 .badge {
   display: inline-flex;
-  background: #eef0ed;
-  color: #58645d;
+  background: var(--surface);
+  color: var(--muted);
   padding: 5px 9px;
   border-radius: 6px;
   font-size: 12px;
   white-space: nowrap;
 }
 .badge.active {
-  background: #e1f2d9;
-  color: #36542b;
+  background: #12351e;
+  color: var(--green);
 }
 .notes {
   display: grid;
@@ -380,7 +380,7 @@ td small {
   grid-template-columns: 1fr 1fr;
 }
 .auth-story {
-  background: #142d27;
+  background: var(--surface);
   color: white;
   padding: 60px;
   display: flex;
@@ -393,7 +393,7 @@ td small {
   line-height: 1.02;
 }
 .auth-story p {
-  color: #c4d4cb;
+  color: var(--muted);
   max-width: 390px;
 }
 .auth-story .eyebrow {
@@ -415,7 +415,7 @@ td small {
 form label {
   display: block;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   margin: 16px 0 6px;
 }
 input,
@@ -423,9 +423,9 @@ textarea,
 select {
   display: block;
   width: 100%;
-  border: 1px solid #cad5cd;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   min-height: 46px;
   padding: 12px;
   color: var(--ink);
@@ -444,7 +444,7 @@ textarea {
   color: var(--muted);
 }
 .error {
-  color: #a53025;
+  color: #ff9b91;
   font-size: 14px;
   min-height: 22px;
 }
@@ -471,7 +471,7 @@ textarea {
   height: 28px;
   display: grid;
   place-items: center;
-  background: #e7efdd;
+  background: var(--surface);
   border-radius: 50%;
   font-size: 12px;
 }
@@ -499,10 +499,11 @@ dialog {
   padding: 30px;
   width: min(740px, calc(100vw - 24px));
   max-height: 90vh;
+  background: var(--surface);
   color: var(--ink);
 }
 dialog::backdrop {
-  background: #0a211a88;
+  background: #000a;
   backdrop-filter: blur(3px);
 }
 .modalhead {
@@ -522,7 +523,7 @@ dialog::backdrop {
 }
 .detail-grid div {
   padding: 14px;
-  background: #f5f7f3;
+  background: var(--surface);
   border-radius: 8px;
 }
 .detail-grid small {
@@ -549,13 +550,13 @@ dialog::backdrop {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: #142d27;
+  background: var(--surface);
   color: white;
   border-radius: 10px;
   padding: 14px 22px;
   max-width: 90vw;
   z-index: 20;
-  box-shadow: 0 8px 30px #142d2722;
+  border: 1px solid var(--line);
 }
 #toast:empty {
   display: none;
@@ -582,20 +583,21 @@ dialog::backdrop {
   font-size: 48px;
 }
 .reward {
-  background: var(--lime);
+  background: var(--surface);
+  border: 1px solid var(--line);
   padding: 30px;
   border-radius: 12px;
   margin: 30px 0;
 }
 .reward p {
-  color: #36502d;
+  color: var(--muted);
 }
 .reward h2 {
   font-size: 30px;
 }
 .progress {
   height: 6px;
-  background: #dee5df;
+  background: #343434;
   border-radius: 5px;
   overflow: hidden;
 }
@@ -716,9 +718,9 @@ dialog::backdrop {
 .mode-link {
   font-size: 13px;
   padding: 14px 18px;
-  color: #d9f46c;
+  color: var(--green);
   text-decoration: none;
-  border-top: 1px solid #395047;
+  border-top: 1px solid var(--line);
   margin-top: 10px;
 }
 .padded {
@@ -780,223 +782,6 @@ dialog::backdrop {
     font-size: 11px;
   }
 }
-/* Apple HIG direction: system typography, grouped surfaces, restrained chrome. */
-:root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --ink: #1c2924;
-  --muted: #65736b;
-  --line: #e1e5e2;
-  --green: #245e43;
-  --lime: #d7ed9c;
-  background: #f2f3f5;
-  color: var(--ink);
-}
-.sidebar {
-  background: #e9eeeb;
-  border-right: 1px solid #dde3df;
-  color: var(--ink);
-}
-.sidebar .brand {
-  color: #1d3e2d;
-}
-.brand {
-  font-size: 22px;
-  letter-spacing: -0.03em;
-}
-.brandmark {
-  background: #d9e8dc;
-  color: #245e43;
-  border-radius: 11px;
-}
-.workspace {
-  background: #f6f8f6;
-  border-color: #dce4de;
-  border-radius: 12px;
-}
-.workspace small {
-  color: #6b7c71;
-}
-.nav button {
-  color: #52675a;
-  border-radius: 10px;
-}
-.nav button.active {
-  background: #d6e7dc;
-  color: #205a3a;
-}
-.sidebar footer {
-  border-color: #d4ded7;
-}
-.sidebar footer button {
-  color: #48624f;
-}
-.mode-link {
-  color: #245e43;
-  border-color: #d4ded7;
-}
-.primary {
-  background: #245e43;
-  color: #fff;
-  border-color: #245e43;
-}
-.primary:hover {
-  background: #1b4e35;
-}
-.dark {
-  background: #245e43;
-}
-.topbar {
-  height: 76px;
-}
-.main {
-  padding-left: 40px;
-  padding-right: 40px;
-}
-.pagehead {
-  margin-top: 32px;
-}
-.eyebrow {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 500;
-  font-size: 13px;
-}
-.pagehead .eyebrow {
-  display: none;
-}
-h1 {
-  font-size: 34px;
-  letter-spacing: -0.03em;
-}
-h2 {
-  font-size: 22px;
-}
-.panel,
-.metrics {
-  border-color: #e4e8e5;
-  border-radius: 16px;
-  box-shadow: 0 1px 2px #1b362205;
-}
-.tabs {
-  background: #e5e9e6;
-  padding: 3px;
-  border-radius: 10px;
-  gap: 0;
-}
-.tabs button {
-  min-height: 34px;
-  border-radius: 7px;
-  padding: 7px 13px;
-  font-size: 13px;
-}
-.tabs button.active {
-  background: #fff;
-  box-shadow: 0 1px 4px #1b36221a;
-  color: #234e34;
-}
-.badge {
-  border-radius: 7px;
-}
-.badge.active {
-  background: #e4f0e3;
-  color: #2b6135;
-}
-.auth-story {
-  background: #e5ede7;
-  color: #234631;
-}
-.auth-story .brand {
-  color: #234631;
-}
-.auth-story p {
-  color: #526b59;
-}
-.auth-story .eyebrow {
-  color: #44634e;
-}
-.auth-story h1 {
-  font-size: clamp(36px, 4vw, 54px);
-  line-height: 1.07;
-}
-.auth-form input {
-  background: #fff;
-}
-.auth-form {
-  background: #f2f3f5;
-}
-.notes {
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
-}
-.note p {
-  font-size: 14px;
-}
-dialog {
-  border-radius: 22px;
-  border-color: #e5e9e5;
-  box-shadow: 0 24px 80px #19352430;
-}
-dialog::backdrop {
-  background: #182c2244;
-  backdrop-filter: blur(5px);
-}
-.reward {
-  background: #e2eddb;
-}
-.reward h2 {
-  color: #25442d;
-}
-.avatar {
-  background: #dce7df;
-}
-.metric strong {
-  font-size: 34px;
-}
-.empty-icon {
-  color: #245e43;
-}
-.padded {
-  border-radius: 16px;
-}
-.auth-form button[type="submit"] {
-  min-height: 48px;
-}
-@media (max-width: 680px) {
-  .main {
-    padding-left: 18px;
-    padding-right: 18px;
-  }
-  .sidebar {
-    border-right: 0;
-    border-bottom: 1px solid #dce3dd;
-  }
-  .nav {
-    background: #eef2ef;
-    border-radius: 14px;
-    padding: 4px;
-    justify-content: space-around;
-  }
-  .nav button {
-    flex-direction: column;
-    gap: 4px;
-    font-size: 11px;
-    flex: 1;
-  }
-  .nav button.active {
-    background: white;
-  }
-  .pagehead h1 {
-    font-size: 30px;
-  }
-  .tabs {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .tabs button {
-    padding: 7px 8px;
-    font-size: 12px;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;
@@ -1017,3 +802,14 @@ dialog::backdrop {
   margin: 6px 0;
   max-width: 65ch;
 }
+
+/* Shared component roles: only primary actions use a solid accent. */
+h1, h2, h3 { font-weight: 400; letter-spacing: 0; }
+button { text-transform: uppercase; }
+.primary, .dark { border-radius: 999px; }
+p, .helper { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.workspace, .panel, .metrics, dialog { border-radius: 12px; }
+.brand { text-transform: uppercase; letter-spacing: 0; }
+.auth-story { border-right: 1px solid var(--line); }
+.auth-story h1 { font-size: clamp(32px, 4vw, 56px); }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }

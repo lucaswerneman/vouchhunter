@@ -27,16 +27,16 @@ class CaptureActivity: ComponentActivity() {
     private val permission=registerForActivityResult(ActivityResultContracts.RequestPermission()){if(it)showAR()else{instruction.text="Kameraåtkomst behövs för att visa objektet."}}
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
-        instruction=TextView(this).apply{text="Rikta kameran mot marken.";textSize=20f}
+        instruction=TextView(this).apply{text="Rikta kameran mot marken.";textSize=20f;HuntStyle.text(this);setBackgroundColor(HuntStyle.canvas)}
         if(checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED)showAR()
         else {setContentView(instruction);permission.launch(Manifest.permission.CAMERA)}
     }
     private fun showAR() {
         val root=FrameLayout(this);setContentView(root)
         val view=ARSceneView(this,sharedActivity=this,sharedLifecycle=lifecycle);scene=view;root.addView(view)
-        instruction.setBackgroundColor(0xddffffff.toInt());instruction.setPadding(24,48,24,24)
+        instruction.setBackgroundColor(0xee000000.toInt());instruction.setPadding(24,48,24,24)
         root.addView(instruction,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
-        collect=Button(this).apply{text="Samla föremålet";isEnabled=false;setOnClickListener{setResult(RESULT_OK,Intent().putExtra("stop_id",intent.getStringExtra("stop_id")));finish()}}
+        collect=Button(this).apply{HuntStyle.button(this);text="Samla föremålet";isEnabled=false;setOnClickListener{setResult(RESULT_OK,Intent().putExtra("stop_id",intent.getStringExtra("stop_id")));finish()}}
         root.addView(collect,FrameLayout.LayoutParams(-1,160,Gravity.BOTTOM))
         view.onSessionFailed={instruction.text="AR kunde inte startas på enheten. Kontrollera att Google Play Services för AR är installerat."}
         view.onSessionUpdated={session,frame ->

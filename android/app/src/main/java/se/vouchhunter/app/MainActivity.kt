@@ -41,17 +41,17 @@ class MainActivity : ComponentActivity(), LocationListener {
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); api = Api(this); if (api.session.read() == null) login(false) else explore() }
     private fun layout(title: String) {
         map?.onPause(); map?.onDestroy(); map = null
-        root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 48, 24, 32); setBackgroundColor(Color.rgb(245,247,246)) }
+        root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 48, 24, 32); setBackgroundColor(HuntStyle.canvas) }
         setContentView(ScrollView(this).apply { addView(root) }); heading(title)
     }
-    private fun heading(text: String) { root.addView(TextView(this).apply { this.text = text; textSize = 30f; setTextColor(Color.rgb(23,46,40)); setPadding(0,20,0,20); typeface = android.graphics.Typeface.DEFAULT_BOLD }) }
-    private fun text(value: String, size: Float = 16f) { root.addView(TextView(this).apply { text = value; textSize = size; setPadding(0,10,0,12); setTextColor(Color.rgb(50,68,58)) }) }
-    private fun button(label: String, action: () -> Unit) { root.addView(Button(this).apply { text = label; isAllCaps = false; minHeight = 54; setOnClickListener { action() } }) }
+    private fun heading(text: String) { root.addView(TextView(this).apply { this.text = text; textSize = 30f; HuntStyle.text(this); setPadding(0,20,0,20); typeface = android.graphics.Typeface.MONOSPACE }) }
+    private fun text(value: String, size: Float = 16f) { root.addView(TextView(this).apply { text = value; textSize = size; setPadding(0,10,0,12); HuntStyle.text(this) }) }
+    private fun button(label: String, action: () -> Unit) { root.addView(Button(this).apply { text = label; HuntStyle.button(this); layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = (12 * resources.displayMetrics.density).toInt() }; setOnClickListener { action() } }) }
     private fun input(label: String, kind: Int): EditText {
         text(label,13f)
-        return EditText(this).apply { inputType = kind; setSingleLine(); root.addView(this) }
+        return EditText(this).apply { inputType = kind; HuntStyle.text(this); backgroundTintList = android.content.res.ColorStateList.valueOf(HuntStyle.line); setSingleLine(); root.addView(this) }
     }
-    private fun message(value: String) { android.app.AlertDialog.Builder(this).setMessage(value).setPositiveButton("OK",null).show() }
+    private fun message(value: String) { android.app.AlertDialog.Builder(this, android.app.AlertDialog.THEME_DEVICE_DEFAULT_DARK).setMessage(value).setPositiveButton("OK",null).show() }
     private fun run(action: suspend () -> Unit) { lifecycleScope.launch { try { action() } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; message(e.message ?: "Något gick fel.") } } }
     private fun login(register: Boolean) {
         layout("vouchhunter."); heading("Nästa upptäckt väntar runt hörnet."); text("Hitta kampanjer. Samla föremål. Få din belöning.")
@@ -84,6 +84,8 @@ class MainActivity : ComponentActivity(), LocationListener {
         map = MapView(this).also { view ->
             view.onCreate(null);root.addView(view,LinearLayout.LayoutParams(-1,650));view.onResume()
             view.getMapAsync { google ->
+                google.setMapStyle(com.google.android.gms.maps.model.MapStyleOptions("""[{"elementType":"geometry","stylers":[{"color":"#20252b"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#b7bdc2"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#20252b"}]},{"featureType":"poi","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"geometry","stylers":[{"color":"#41474d"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#10191e"}]}]"""))
+                google.isBuildingsEnabled = true
                 stops.forEach { s -> google.addMarker(MarkerOptions().position(LatLng(s.getDouble("lat"),s.getDouble("lon"))).title(s.getString("name"))) }
                 val first=stops.firstOrNull();google.moveCamera(CameraUpdateFactory.newLatLngZoom(if(first==null) LatLng(59.3326,18.0649) else LatLng(first.getDouble("lat"),first.getDouble("lon")),14f))
             }
