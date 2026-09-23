@@ -571,8 +571,55 @@ class App:
                         "SELECT count(*) FROM vouchers v JOIN hunts h ON h.id=v.hunt_id WHERE h.campaign_id=? AND v.redeemed IS NOT NULL",
                         (r[0],),
                     ).fetchone()[0]
+                    c["editing_locked"] = bool(
+                        c["paid"]
+                        or c["status"] != "draft"
+                        or db.execute(
+                            "SELECT 1 FROM payment_orders WHERE campaign_id=?",
+                            (c["id"],),
+                        ).fetchone()
+                    )
                     campaigns.append(c)
                 return {"campaigns": campaigns}, None
+            edit = re.fullmatch("/api/admin/campaigns/([a-f0-9]+)/edit", path)
+            if edit and method == "POST":
+                self.store.admin(db, who)
+                cid = edit.group(1)
+                c = self.store.campaign(db, cid)
+                require(
+                    c["status"] == "draft" and not c["paid"],
+                    "Endast obetalda utkast kan redigeras.",
+                    409,
+                )
+                require(
+                    not db.execute(
+                        "SELECT 1 FROM payment_orders WHERE campaign_id=?", (cid,)
+                    ).fetchone(),
+                    "Upplägget är låst eftersom en betalning har påbörjats.",
+                    409,
+                )
+                starts = integer(data.get("starts"), 0, 4102444800)
+                ends = integer(data.get("ends"), starts + 60, 4102444800)
+                target = integer(data.get("target"), 1, min(50, len(c["stops"])))
+                values = (
+                    text_field(data, "title", 3, 120),
+                    text_field(data, "description", 10, 2000),
+                    text_field(data, "reward", 3, 200),
+                    text_field(data, "terms", 10, 2000),
+                    text_field(data, "venue", 3, 200),
+                    starts,
+                    ends,
+                    integer(data.get("voucher_days"), 1, 365),
+                    target,
+                    integer(data.get("capacity"), 1, 100000),
+                    cid,
+                )
+                db.execute(
+                    "UPDATE campaigns SET title=?,description=?,reward=?,terms=?,venue=?,starts=?,ends=?,voucher_days=?,target=?,capacity=? WHERE id=?",
+                    values,
+                )
+                self.store.audit(db, who, "campaign.updated", cid)
+                return self.store.campaign(db, cid), None
             if path == "/api/admin/campaigns" and method == "POST":
                 self.store.admin(db, who)
                 org = text_field(data, "org_id")
@@ -657,6 +704,13 @@ class App:
                     require(
                         c["status"] == "draft" and not c["paid"],
                         "Objektet är låst efter betalning eller publicering.",
+                        409,
+                    )
+                    require(
+                        not db.execute(
+                            "SELECT 1 FROM payment_orders WHERE campaign_id=?", (cid,)
+                        ).fetchone(),
+                        "Upplägget är låst eftersom en betalning har påbörjats.",
                         409,
                     )
                     model_id = text_field(data, "model_id")

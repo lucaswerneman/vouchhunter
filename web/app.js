@@ -204,7 +204,7 @@ function openModal(html) {
       }
     };
 }
-function campaignForm(brief = null) {
+function campaignForm(brief = null, editing = null) {
   openModal(
     `<form id="campaign-form"><div class="modalhead"><div><div class="eyebrow">NY KAMPANJ</div><h2>Skapa en upptäckt.</h2></div><button id="close" type="button" class="ghost" aria-label="Stäng">✕</button></div><p>Konfigurera kundens jakt. Kunden granskar upplägget och betalar innan du publicerar.</p><section class="form-section"><div class="section-title"><span class="step">1</span><h3>Kampanjen & belöningen</h3></div><label>Företag<select name="org_id">${organizations.map((o) => `<option value="${o.id}">${esc(o.name)}</option>`).join("")}</select></label><label>Kampanjnamn<input name="title" minlength="3" maxlength="120" placeholder="Exempel: Jakten på vår nya pizza" required></label><label>Beskrivning<textarea name="description" minlength="10" maxlength="2000" placeholder="Berätta vad deltagaren ska upptäcka…" required></textarea></label><div class="form-grid"><label>Belöning<input name="reward" minlength="3" maxlength="200" placeholder="Exempel: En valfri pizza" required></label><label>Inlösenställe<input name="venue" minlength="3" maxlength="200" placeholder="Namn och adress" required></label></div><label>Villkor för belöningen<textarea name="terms" minlength="10" maxlength="2000" placeholder="Vad ingår, när gäller erbjudandet och finns det undantag?" required></textarea></label></section><section class="form-section"><div class="section-title"><span class="step">2</span><h3>Omfattning & period</h3></div><div class="form-grid"><label>Start<input name="starts" type="datetime-local" required></label><label>Slut<input name="ends" type="datetime-local" required></label><label>Objekt att samla<input name="target" type="number" min="1" max="50" value="3" required></label><label>Antal belöningar<input name="capacity" type="number" min="1" max="100000" value="100" required></label><label>Voucherns giltighet, dagar<input name="voucher_days" type="number" min="1" max="365" value="14" required></label></div><p class="helper">En belöning reserveras i upp till 60 minuter när en deltagare startar jakten. Reservationen slutar senast vid kampanjens sluttid.</p></section><section class="form-section"><div class="section-title"><span class="step">3</span><h3>Platser att upptäcka</h3></div><p class="helper">Placera objekten på tillgängliga, säkra platser utomhus. Lägg till minst lika många platser som insamlingsmålet. Insamlingsradien är 40 meter.</p><div id="stops"></div><button id="add-stop" type="button" class="small">+ Lägg till plats</button></section><div class="error" role="alert"></div><div class="actions"><span class="helper">Sparas som utkast</span><button type="submit" class="primary">Spara kampanj →</button></div></form>`,
   );
@@ -226,7 +226,7 @@ function campaignForm(brief = null) {
       radius: 40,
     }));
     try {
-      const created = await api("/admin/campaigns", data);
+      const created = await api(editing ? "/admin/campaigns/" + editing.id + "/edit" : "/admin/campaigns", data);
       if (brief)
         await api("/admin/briefs/" + brief.id + "/link", {
           campaign_id: created.id,
@@ -242,6 +242,21 @@ function campaignForm(brief = null) {
       e.submitter.disabled = false;
     }
   };
+  if (editing) {
+    $("#campaign-form h2").textContent = "Redigera kampanj";
+    $("#campaign-form .eyebrow").textContent = "UTKAST";
+    for (const key of ["org_id", "title", "description", "reward", "terms", "venue", "target", "capacity", "voucher_days"])
+      $("#campaign-form [name=" + key + "]").value = editing[key];
+    for (const key of ["starts", "ends"]) {
+      const d = new Date(editing[key] * 1000);
+      $("#campaign-form [name=" + key + "]").value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+    $("#campaign-form [name=org_id]").disabled = true;
+    $("#campaign-form [name=target]").max = editing.stops.length;
+    // Locations retain their identity; this form edits the offer and its period.
+    $("#stops").closest("section").hidden = true;
+    $("#stops").querySelectorAll("input").forEach(input => input.disabled = true);
+  }
   if (brief) {
     for (const key of ["org_id", "title", "description", "reward"])
       $("#campaign-form [name=" + key + "]").value = brief[key];
@@ -257,7 +272,7 @@ function addStop() {
 function detail(id) {
   const c = campaigns.find((c) => c.id === id);
   openModal(
-    `<div class="modalhead"><span class="badge ${c.status === "active" ? "active" : ""}">${status(c)}</span><button class="ghost" id="close" aria-label="Stäng">✕</button></div><div class="eyebrow">${esc(c.brand)}</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><div class="detail-grid"><div><small>Belöning</small><strong>${esc(c.reward)}</strong></div><div><small>Inlösen</small><strong>${esc(c.venue)}</strong></div><div><small>Upplägg</small>${c.target} objekt · ${c.capacity} belöningar</div><div><small>Period</small>${date(c.starts)} – ${date(c.ends)}</div><div><small>Betalning</small>${c.paid ? "Betald" : c.model_id ? "Redo för betalning" : "Upplägget förbereds"}</div><div><small>Resultat</small>${c.started} startade · ${c.completed} slutförda · ${c.redeemed} inlösta</div></div><h3>Platser i kampanjen</h3><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}${adminMode ? `<small>${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</small>` : ""}</li>`).join("")}</ul><h3>Villkor</h3><p>${esc(c.terms)}</p><p class="helper">Vouchern gäller i ${c.voucher_days} dagar efter slutförd jakt.</p>${adminMode ? `<section class="admin-config"><h3>3D-objekt</h3><p class="helper">Både iPhone- och Android-format måste vara kopplade innan kampanjen kan betalas.</p><form id="model-form"><label for="model-id">Objekt i biblioteket</label><select id="model-id" required ${c.paid || c.status !== "draft" ? "disabled" : ""}><option value="">Välj 3D-objekt</option>${assetLibrary.models.map((m) => `<option value="${m.id}" ${m.id === c.model_id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select>${!c.paid && c.status === "draft" ? '<button class="small" type="submit">Koppla objekt</button>' : ""}</form></section>` : ""}<div class="error" role="alert"></div><div class="actions">${c.status === "active" ? '<button id="share">Kopiera kampanjlänk</button>' : ""}${adminMode ? `<button id="admin-change" class="${c.status === "active" ? "" : "primary"}" ${!c.paid || !c.model_id ? "disabled" : ""}>${c.status === "active" ? "Pausa kampanj" : "Publicera kampanj"}</button>` : !c.paid ? `<button id="pay" class="primary" ${!c.model_id ? "disabled" : ""}>${c.model_id ? "Granska pris & betala →" : "Vi förbereder din kampanj"}</button>` : '<span class="badge active">Betald · vi sköter publiceringen</span>'}</div>`,
+    `<div class="modalhead"><span class="badge ${c.status === "active" ? "active" : ""}">${status(c)}</span><button class="ghost" id="close" aria-label="Stäng">✕</button></div><div class="eyebrow">${esc(c.brand)}</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><div class="detail-grid"><div><small>Belöning</small><strong>${esc(c.reward)}</strong></div><div><small>Inlösen</small><strong>${esc(c.venue)}</strong></div><div><small>Upplägg</small>${c.target} objekt · ${c.capacity} belöningar</div><div><small>Period</small>${date(c.starts)} – ${date(c.ends)}</div><div><small>Betalning</small>${c.paid ? "Betald" : c.model_id ? "Redo för betalning" : "Upplägget förbereds"}</div><div><small>Resultat</small>${c.started} startade · ${c.completed} slutförda · ${c.redeemed} inlösta</div></div><h3>Platser i kampanjen</h3><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}${adminMode ? `<small>${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</small>` : ""}</li>`).join("")}</ul><h3>Villkor</h3><p>${esc(c.terms)}</p><p class="helper">Vouchern gäller i ${c.voucher_days} dagar efter slutförd jakt.</p>${adminMode ? `<section class="admin-config"><h3>3D-objekt</h3><p class="helper">Både iPhone- och Android-format måste vara kopplade innan kampanjen kan betalas.</p><form id="model-form"><label for="model-id">Objekt i biblioteket</label><select id="model-id" required ${c.editing_locked ? "disabled" : ""}><option value="">Välj 3D-objekt</option>${assetLibrary.models.map((m) => `<option value="${m.id}" ${m.id === c.model_id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select>${!c.editing_locked ? '<button class="small" type="submit">Koppla objekt</button>' : ""}</form></section>` : ""}<div class="error" role="alert"></div><div class="actions">${c.status === "active" ? '<button id="share">Kopiera kampanjlänk</button>' : ""}${adminMode && !c.editing_locked ? '<button id="edit-campaign">Redigera upplägg</button>' : ""}${adminMode ? `<button id="admin-change" class="${c.status === "active" ? "" : "primary"}" ${!c.paid || !c.model_id ? "disabled" : ""}>${c.status === "active" ? "Pausa kampanj" : "Publicera kampanj"}</button>` : !c.paid ? `<button id="pay" class="primary" ${!c.model_id ? "disabled" : ""}>${c.model_id ? "Granska pris & betala →" : "Vi förbereder din kampanj"}</button>` : '<span class="badge active">Betald · vi sköter publiceringen</span>'}</div>`,
   );
   if ($("#share"))
     $("#share").onclick = async () => {
@@ -282,6 +297,7 @@ function detail(id) {
         e.target.disabled = false;
       }
     };
+  if ($("#edit-campaign")) $("#edit-campaign").onclick = () => campaignForm(null, c);
   if ($("#admin-change"))
     $("#admin-change").onclick = async (e) => {
       e.target.disabled = true;

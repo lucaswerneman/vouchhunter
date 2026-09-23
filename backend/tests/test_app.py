@@ -103,6 +103,70 @@ class PlatformTests(unittest.TestCase):
         self.assertEqual(status, 200, c)
         return c
 
+    def test_admin_edits_draft_preserving_locations_and_model(self):
+        c = self.campaign
+        body = dict(c, title="Ny kampanjtitel", capacity=20)
+        path = "/api/admin/campaigns/" + c["id"] + "/edit"
+        self.assertEqual(self.call(path, body, self.owner)[0], 403)
+        status, updated = self.call(path, body, self.admin)
+        self.assertEqual(status, 200, updated)
+        self.assertEqual(updated["title"], "Ny kampanjtitel")
+        self.assertEqual(updated["capacity"], 20)
+        self.assertEqual(updated["stops"], c["stops"])
+        self.assertEqual(updated["model_id"], c["model_id"])
+        self.assertEqual(self.call(path, dict(body, target=2), self.admin)[0], 400)
+        self.assertEqual(
+            self.call(path, dict(body, ends=body["starts"]), self.admin)[0], 400
+        )
+        with self.app.store.transaction() as db:
+            self.assertEqual(
+                db.execute(
+                    "SELECT count(*) FROM audit WHERE action='campaign.updated' AND entity=?",
+                    (c["id"],),
+                ).fetchone()[0],
+                1,
+            )
+
+    def test_checkout_locks_campaign_even_before_payment_completes(self):
+        c = self.campaign
+        with self.app.store.transaction() as db:
+            db.execute(
+                "INSERT INTO payment_orders VALUES(?,?,?,?,?,?,?)",
+                (
+                    "pending-test",
+                    c["id"],
+                    10000,
+                    "sek",
+                    "https://checkout.stripe.com/test",
+                    now() - 60,
+                    0,
+                ),
+            )
+        status, result = self.call(
+            "/api/admin/campaigns/" + c["id"] + "/edit",
+            dict(c, title="Changed title"),
+            self.admin,
+        )
+        self.assertEqual(status, 409, result)
+        listing = self.call("/api/admin/campaigns", token=self.admin)[1]
+        self.assertTrue(listing["campaigns"][0]["editing_locked"])
+        self.assertEqual(
+            self.call(
+                "/api/admin/campaigns/" + c["id"] + "/model",
+                {"model_id": "test_model"},
+                self.admin,
+            )[0],
+            409,
+        )
+
+    def test_paid_campaign_cannot_be_edited(self):
+        self.publish_for_test()
+        c = self.campaign
+        self.assertEqual(
+            self.call("/api/admin/campaigns/" + c["id"] + "/edit", c, self.admin)[0],
+            409,
+        )
+
     def publish_for_test(self, c=None):
         c = c or self.campaign
         # Test fixture only: no production endpoint bypasses a payment.

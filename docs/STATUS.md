@@ -30,7 +30,7 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 ## Återstår före skarp leverans
 - Fysisk AR-, GPS- och 3D-modellverifiering på iPhone och Android.
 - Adminpanelens visuella end-to-end-kontroll. Tilldelning av ett lokalt QA-adminkonto väntar på användarens uttryckliga godkännande efter automatisk behörighetsgranskning.
-- Kampanjredigering, personalinbjudningar, e-postverifiering och lösenordsåterställning.
+- Utökad platsredigering, personalinbjudningar, e-postverifiering och lösenordsåterställning.
 - Återbetalning, prisvisning, kontrollerad hantering av paus/avbokning och supportprocesser.
 - Starkare skydd mot förfalskade positionsuppgifter; GPS från klient är inte bevis på fysisk närvaro.
 - Skarp HTTPS-domän, drift, mejl, Stripe, Google Maps-nyckel, övervakning och extern backup av databas plus modeller.
@@ -43,3 +43,8 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 - Belöningsreservationen är högst 60 minuter som justerbart arbetsantagande.
 - SQLite behöver lasttest och driftbedömning innan större skarp trafik.
 - GitHub-repot är publikt. Hemligheter, lokala konton, databaser och uppladdade modeller ingår inte i Git.
+
+## Senaste tillägg
+- Admin kan redigera erbjudande, period och omfattning i obetalda utkast. Platser och 3D-koppling bevaras.
+- Påbörjad betalning låser både upplägg och modellbyte, även om en äldre betalningssession har löpt ut. Upplåsning kräver ett kommande kontrollerat avbokningsflöde.
+- Tre nya backendtester verifierar behörighet, validering, bevarade kopplingar och betalningslås. Visuell adminverifiering väntar fortfarande på godkännandet ovan.
