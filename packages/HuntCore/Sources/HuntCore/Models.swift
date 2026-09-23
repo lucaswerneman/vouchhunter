@@ -22,6 +22,13 @@ public struct Campaign: Codable, Identifiable, Sendable {
     public let ends: TimeInterval
     public let voucher_days: Int
     public let stops: [Stop]
+    public let model: CampaignModel?
+}
+public struct CampaignModel: Codable, Sendable {
+    public let id: String
+    public let name: String
+    public let glb_asset_id: String
+    public let usdz_asset_id: String
 }
 public struct Voucher: Codable, Identifiable, Sendable {
     public let id: String

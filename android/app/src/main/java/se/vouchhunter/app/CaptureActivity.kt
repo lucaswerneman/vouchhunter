@@ -36,7 +36,7 @@ class CaptureActivity: ComponentActivity() {
         val view=ARSceneView(this,sharedActivity=this,sharedLifecycle=lifecycle);scene=view;root.addView(view)
         instruction.setBackgroundColor(0xddffffff.toInt());instruction.setPadding(24,48,24,24)
         root.addView(instruction,FrameLayout.LayoutParams(-1,-2,Gravity.TOP))
-        collect=Button(this).apply{text="Samla pizzan";isEnabled=false;setOnClickListener{setResult(RESULT_OK,Intent().putExtra("stop_id",intent.getStringExtra("stop_id")));finish()}}
+        collect=Button(this).apply{text="Samla föremålet";isEnabled=false;setOnClickListener{setResult(RESULT_OK,Intent().putExtra("stop_id",intent.getStringExtra("stop_id")));finish()}}
         root.addView(collect,FrameLayout.LayoutParams(-1,160,Gravity.BOTTOM))
         view.onSessionFailed={instruction.text="AR kunde inte startas på enheten. Kontrollera att Google Play Services för AR är installerat."}
         view.onSessionUpdated={session,frame ->
@@ -48,9 +48,11 @@ class CaptureActivity: ComponentActivity() {
                     val anchor=AnchorNode(view.engine,plane.createAnchor(plane.centerPose));view.addChildNode(anchor)
                     lifecycleScope.launch {
                         try {
-                            val model=view.modelLoader.loadModelInstance("models/pizza.glb") ?: error("Modellen kunde inte läsas.")
+                            val assetID=intent.getStringExtra("asset_id") ?: error("Kampanjen saknar 3D-objekt.")
+                            val file=Api(this@CaptureActivity).modelFile(assetID)
+                            val model=view.modelLoader.loadModelInstance(file.toURI().toString()) ?: error("Modellen kunde inte läsas.")
                             anchor.addChildNode(ModelNode(modelInstance=model,scaleToUnits=1.5f))
-                            loaded=true;instruction.text="Där är din pizza. Tryck för att samla den."
+                            loaded=true;instruction.text="Där är ditt fynd. Tryck för att samla det."
                         }catch(e:Exception){instruction.text="Objektet kunde inte visas. Gå tillbaka och försök igen."}
                     }
                 }

@@ -1,12 +1,13 @@
 """Vouchhunter WSGI API. Run locally with python3 -m backend.app.
 Production deployment requires TLS and a production WSGI host; see docs/OPERATIONS.md.
 """
-import hashlib, hmac, json, math, os, re, secrets, sqlite3, time
+import base64, hashlib, hmac, json, math, os, re, secrets, sqlite3, time
 from contextlib import contextmanager
 from http.cookies import SimpleCookie
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode
 from urllib.request import Request, urlopen
+from backend.assets import validate_model
 
 ROOT = Path(__file__).resolve().parents[1]
 class Problem(Exception):
@@ -41,6 +42,16 @@ class Store:
         self.path = str(path)
         Path(path).parent.mkdir(parents=True,exist_ok=True)
         with self.connect() as db: db.executescript((ROOT/'backend/schema.sql').read_text())
+        with self.transaction() as db:
+            version=db.execute('PRAGMA user_version').fetchone()[0]
+            for migration in sorted((ROOT/'backend/migrations').glob('*.sql')):
+                number=int(migration.name.split('_')[0])
+                if number>version:
+                    require(number==version+1,'Databasens migreringsordning är fel.',500)
+                    for statement in migration.read_text().split(';'):
+                        if statement.strip(): db.execute(statement)
+                    db.execute(f'PRAGMA user_version={number}')
+                    version=number
     def connect(self):
         db=sqlite3.connect(self.path,timeout=15)
         db.row_factory=sqlite3.Row
@@ -66,11 +77,15 @@ class Store:
     def member(self,db,user,org,owner=False):
         row=db.execute('SELECT role FROM memberships WHERE user_id=? AND org_id=?',(user,org)).fetchone()
         require(row and (not owner or row['role']=='owner'),'Du saknar behörighet.',403)
+    def admin(self,db,user):
+        require(db.execute('SELECT 1 FROM platform_admins WHERE user_id=?',(user,)).fetchone(),'Endast plattformens administratör har åtkomst.',403)
     def campaign(self,db,cid):
         c=db.execute('SELECT c.*,o.name AS brand FROM campaigns c JOIN organizations o ON o.id=c.org_id WHERE c.id=?',(cid,)).fetchone()
         require(c,'Kampanjen hittades inte.',404)
         result=dict(c)
         result['stops']=[dict(s) for s in db.execute('SELECT * FROM stops WHERE campaign_id=? ORDER BY rowid',(cid,))]
+        model=db.execute('SELECT * FROM models WHERE id=?',(result['model_id'],)).fetchone()
+        result['model']=dict(model) if model else None
         return result
     def hunt(self,db,user,cid):
         h=db.execute('SELECT * FROM hunts WHERE user_id=? AND campaign_id=?',(user,cid)).fetchone()
@@ -130,6 +145,8 @@ class App:
         headers=[('Content-Type','application/json; charset=utf-8'),('Cache-Control','no-store'),('X-Content-Type-Options','nosniff'),('Referrer-Policy','same-origin')]
         try:
             path=e.get('PATH_INFO','/'); method=e['REQUEST_METHOD']
+            if re.fullmatch('/api/assets/[a-f0-9]{24}',path) and method=='GET':
+                return self.asset_response(path.rsplit('/',1)[1],e,start)
             if not path.startswith('/api/'):
                 return self.static(path,start)
             require(method in ('GET','POST'),'Metoden stöds inte.',405)
@@ -139,7 +156,7 @@ class App:
                 require(not origin or origin==expected,'Otillåtet ursprung.',403)
                 require(e.get('CONTENT_TYPE','').split(';')[0]=='application/json','JSON krävs.',415)
             length=int(e.get('CONTENT_LENGTH') or 0)
-            require(0<=length<=100000,'För stor förfrågan.',413)
+            require(0<=length<=(17*1024*1024 if path=='/api/admin/assets' else 100000),'För stor förfrågan.',413)
             raw=e['wsgi.input'].read(length)
             try: data=json.loads(raw) if raw else {}
             except ValueError: raise Problem(400,'Ogiltig JSON.')
@@ -162,6 +179,19 @@ class App:
             start('404 Not Found',[('Content-Type','text/plain')]);return [b'Not found']
         mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml'}.get(file.suffix,'application/octet-stream')
         start('200 OK',[('Content-Type',mime),('X-Content-Type-Options','nosniff'),('Content-Security-Policy',"default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"),('Cache-Control','no-cache')]);return [file.read_bytes()]
+    def asset_response(self,asset_id,e,start):
+        with self.store.transaction() as db:
+            asset=db.execute('SELECT * FROM assets WHERE id=?',(asset_id,)).fetchone()
+            require(asset,'Filen hittades inte.',404)
+            public=db.execute("SELECT 1 FROM campaigns c JOIN models m ON m.id=c.model_id WHERE (m.glb_asset_id=? OR m.usdz_asset_id=?) AND c.status='active' AND c.starts<=? AND c.ends>?",(asset_id,asset_id,now(),now())).fetchone()
+            if not public:
+                token=e.get('HTTP_AUTHORIZATION','').removeprefix('Bearer ')
+                if not token:
+                    cookie=SimpleCookie();cookie.load(e.get('HTTP_COOKIE',''));token=cookie['vh_session'].value if 'vh_session' in cookie else ''
+                self.store.admin(db,self.store.user(db,token)['id'])
+            content=(Path(os.environ.get('ASSET_PATH',ROOT/'data/assets'))/asset['filename']).read_bytes()
+        start('200 OK',[('Content-Type','model/gltf-binary' if asset['format']=='glb' else 'model/vnd.usdz+zip'),('Content-Length',str(len(content))),('X-Content-Type-Options','nosniff'),('Cache-Control','private, max-age=3600')])
+        return [content]
     def route(self,path,method,data,e,raw):
         if path=='/api/health': return {'status':'ok'},None
         if path=='/api/payments/webhook': return self.webhook(e,raw,data),None
@@ -205,11 +235,15 @@ class App:
             user=self.store.user(db,token);who=user['id']
             if path=='/api/me':
                 user['organizations']=[dict(r) for r in db.execute('SELECT o.*,m.role FROM organizations o JOIN memberships m ON m.org_id=o.id WHERE m.user_id=?',(who,))]
+                user['is_admin']=bool(db.execute('SELECT 1 FROM platform_admins WHERE user_id=?',(who,)).fetchone())
                 return user,None
             if path=='/api/logout' and method=='POST':
                 db.execute('UPDATE sessions SET revoked=1 WHERE token=?',(hash_token(token),));return {'ok':True},'vh_session=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/'
-            if path=='/api/manage/campaigns' and method=='GET':
-                ids=db.execute('SELECT c.id FROM campaigns c JOIN memberships m ON m.org_id=c.org_id WHERE m.user_id=? ORDER BY c.created DESC',(who,)).fetchall()
+            if path in ('/api/manage/campaigns','/api/admin/campaigns') and method=='GET':
+                if path.startswith('/api/admin/'):
+                    self.store.admin(db,who)
+                    ids=db.execute('SELECT id FROM campaigns ORDER BY created DESC').fetchall()
+                else: ids=db.execute('SELECT c.id FROM campaigns c JOIN memberships m ON m.org_id=c.org_id WHERE m.user_id=? ORDER BY c.created DESC',(who,)).fetchall()
                 campaigns=[]
                 for r in ids:
                     c=self.store.campaign(db,r[0]);c['started']=db.execute('SELECT count(*) FROM hunts WHERE campaign_id=?',(r[0],)).fetchone()[0]
@@ -217,8 +251,10 @@ class App:
                     c['redeemed']=db.execute('SELECT count(*) FROM vouchers v JOIN hunts h ON h.id=v.hunt_id WHERE h.campaign_id=? AND v.redeemed IS NOT NULL',(r[0],)).fetchone()[0]
                     campaigns.append(c)
                 return {'campaigns':campaigns},None
-            if path=='/api/manage/campaigns' and method=='POST':
-                org=text_field(data,'org_id');self.store.member(db,who,org,True)
+            if path=='/api/admin/campaigns' and method=='POST':
+                self.store.admin(db,who)
+                org=text_field(data,'org_id')
+                require(db.execute('SELECT 1 FROM organizations WHERE id=?',(org,)).fetchone(),'Företaget hittades inte.',404)
                 cid=uid();title=text_field(data,'title',3,120);desc=text_field(data,'description',10,2000);reward=text_field(data,'reward',3,200);terms=text_field(data,'terms',10,2000);venue=text_field(data,'venue',3,200)
                 starts=integer(data.get('starts'),0,4102444800);ends=integer(data.get('ends'),starts+60,4102444800)
                 target=integer(data.get('target'),1,50);capacity=integer(data.get('capacity'),1,100000)
@@ -232,13 +268,61 @@ class App:
                 db.execute('INSERT INTO campaigns(id,org_id,title,description,reward,terms,venue,starts,ends,voucher_days,target,capacity,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',(cid,org,title,desc,reward,terms,venue,starts,ends,days,target,capacity,now()))
                 db.executemany('INSERT INTO stops VALUES(?,?,?,?,?,?)',locations);self.store.audit(db,who,'campaign.created',cid)
                 return self.store.campaign(db,cid),None
-            match=re.fullmatch('/api/manage/campaigns/([a-f0-9]+)/(publish|pause|checkout)',path)
+            match=re.fullmatch('/api/(?:manage|admin)/campaigns/([a-f0-9]+)/(publish|pause|checkout|model)',path)
             if match and method=='POST':
-                cid,action=match.groups();c=self.store.campaign(db,cid);self.store.member(db,who,c['org_id'],True)
-                if action=='checkout': return self.checkout(db,c),None
-                if action=='publish': require(c['paid'],'Betala kampanjen innan publicering.',409);require(c['ends']>now(),'Kampanjens slutdatum har passerat.',409)
+                cid,action=match.groups();c=self.store.campaign(db,cid)
+                if action=='checkout':
+                    self.store.member(db,who,c['org_id'],True)
+                    require(c['model_id'],'Kampanjen förbereds av Vouchhunter. Betalning öppnas när upplägget är klart.',409)
+                    return self.checkout(db,c),None
+                self.store.admin(db,who)
+                if action=='model':
+                    require(c['status']=='draft' and not c['paid'],'Objektet är låst efter betalning eller publicering.',409)
+                    model_id=text_field(data,'model_id')
+                    require(db.execute('SELECT 1 FROM models WHERE id=?',(model_id,)).fetchone(),'3D-objektet hittades inte.',404)
+                    db.execute('UPDATE campaigns SET model_id=? WHERE id=?',(model_id,cid))
+                    self.store.audit(db,who,'campaign.model',cid)
+                    return self.store.campaign(db,cid),None
+                if action=='publish':
+                    require(c['paid'],'Betala kampanjen innan publicering.',409)
+                    require(c['model_id'],'Välj ett 3D-objekt med båda mobilformaten först.',409)
+                    require(c['ends']>now(),'Kampanjens slutdatum har passerat.',409)
                 db.execute('UPDATE campaigns SET status=? WHERE id=?',('active' if action=='publish' else 'paused',cid));self.store.audit(db,who,'campaign.'+action,cid)
                 return self.store.campaign(db,cid),None
+            if path in ('/api/manage/briefs','/api/admin/briefs'):
+                if path.startswith('/api/admin/'):
+                    self.store.admin(db,who)
+                    if method=='GET': return {'briefs':[dict(r) for r in db.execute('SELECT b.*,o.name AS brand FROM briefs b JOIN organizations o ON o.id=b.org_id ORDER BY b.created DESC')]},None
+                elif method=='GET': return {'briefs':[dict(r) for r in db.execute('SELECT b.* FROM briefs b JOIN memberships m ON m.org_id=b.org_id WHERE m.user_id=? ORDER BY b.created DESC',(who,))]},None
+                elif method=='POST':
+                    org=text_field(data,'org_id');self.store.member(db,who,org,True);bid=uid()
+                    db.execute('INSERT INTO briefs(id,org_id,title,description,reward,area,preferred_start,created) VALUES(?,?,?,?,?,?,?,?)',(bid,org,text_field(data,'title',3,120),text_field(data,'description',10,2000),text_field(data,'reward',3,200),text_field(data,'area',2,200),text_field(data,'preferred_start',4,100),now()))
+                    self.store.audit(db,who,'brief.created',bid);return {'id':bid},None
+            match=re.fullmatch('/api/admin/briefs/([a-f0-9]+)/link',path)
+            if match and method=='POST':
+                self.store.admin(db,who);c=self.store.campaign(db,text_field(data,'campaign_id'))
+                brief=db.execute('SELECT * FROM briefs WHERE id=?',(match[1],)).fetchone()
+                require(brief and brief['org_id']==c['org_id'],'Brief och kampanj måste tillhöra samma företag.',409)
+                require(not brief['campaign_id'],'Briefen har redan en kampanj.',409)
+                db.execute('UPDATE briefs SET campaign_id=? WHERE id=?',(c['id'],match[1]));return {'ok':True},None
+            if path=='/api/admin/organizations' and method=='GET':
+                self.store.admin(db,who);return {'organizations':[dict(r) for r in db.execute('SELECT * FROM organizations ORDER BY name')]},None
+            if path=='/api/admin/assets':
+                self.store.admin(db,who)
+                if method=='GET':return {'assets':[dict(r) for r in db.execute('SELECT * FROM assets ORDER BY created DESC')],'models':[dict(r) for r in db.execute('SELECT * FROM models ORDER BY created DESC')]},None
+                name=text_field(data,'name',2,120);kind=text_field(data,'format')
+                try: content=base64.b64decode(text_field(data,'content',1,17*1024*1024),validate=True);validate_model(content,kind)
+                except (ValueError,TypeError):raise Problem(400,'Modellen kunde inte godkännas. Använd en fristående GLB 2.0 eller ett okomprimerat USDZ-arkiv, högst 12 MB.')
+                asset_id=uid();filename=asset_id+'.'+kind
+                directory=Path(os.environ.get('ASSET_PATH',ROOT/'data/assets'));directory.mkdir(parents=True,exist_ok=True)
+                with (directory/filename).open('xb') as output:output.write(content)
+                db.execute('INSERT INTO assets VALUES(?,?,?,?,?,?,?)',(asset_id,name,kind,filename,len(content),hashlib.sha256(content).hexdigest(),now()))
+                self.store.audit(db,who,'asset.uploaded',asset_id);return {'id':asset_id},None
+            if path=='/api/admin/models' and method=='POST':
+                self.store.admin(db,who);mid=uid();name=text_field(data,'name',2,120)
+                glb=text_field(data,'glb_asset_id');usdz=text_field(data,'usdz_asset_id')
+                for aid,kind in [(glb,'glb'),(usdz,'usdz')]:require(db.execute('SELECT 1 FROM assets WHERE id=? AND format=?',(aid,kind)).fetchone(),'Välj rätt format för varje plattform.')
+                db.execute('INSERT INTO models VALUES(?,?,?,?,?)',(mid,name,glb,usdz,now()));return {'id':mid},None
             match=re.fullmatch('/api/hunts/([a-f0-9]+)(?:/(start|collect))?',path)
             if match:
                 cid,action=match.groups()

@@ -3,7 +3,7 @@ import MapKit
 import HuntCore
 
 @main struct VouchhunterApp: App {
-    var body: some Scene { WindowGroup { RootView().tint(Color(red:0.14,green:0.35,blue:0.23)) } }
+    var body: some Scene { WindowGroup { RootView().tint(Brand.accent) } }
 }
 @MainActor final class Session: ObservableObject {
     @Published var loggedIn = Keychain.read() != nil
@@ -35,6 +35,11 @@ struct RootView: View {
         .alert("Kampanjen kunde inte öppnas",isPresented:Binding(get:{linkError != nil},set:{if !$0{linkError=nil}})){Button("OK"){linkError=nil}}message:{Text(linkError ?? "")}
     }
 }
+enum Brand {
+    static let accent=Color(uiColor:UIColor { traits in
+        traits.userInterfaceStyle == .dark ? UIColor(red:0.55,green:0.85,blue:0.67,alpha:1) : UIColor(red:0.13,green:0.38,blue:0.27,alpha:1)
+    })
+}
 struct LoginView: View {
     @ObservedObject var session:Session
     @State private var register=false
@@ -45,20 +50,27 @@ struct LoginView: View {
     @State private var busy=false
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment:.leading,spacing:22){
-                    Label("vouchhunter.",systemImage:"location.circle.fill").font(.title2.bold())
-                    Spacer(minLength:30)
-                    Text("Nästa upptäckt\nväntar runt hörnet.").font(.system(size:38,weight:.bold,design:.rounded))
-                    Text("Hitta kampanjer. Samla föremål i verkligheten. Få något att se fram emot.").foregroundStyle(.secondary)
-                    if register { TextField("Ditt namn",text:$name).textContentType(.name).textFieldStyle(.roundedBorder) }
-                    TextField("E-postadress",text:$email).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().textContentType(.username).textFieldStyle(.roundedBorder)
-                    SecureField("Lösenord, minst 10 tecken",text:$password).textContentType(register ? .newPassword : .password).textFieldStyle(.roundedBorder)
-                    if !error.isEmpty { Text(error).foregroundStyle(.red).accessibilityLabel("Fel: "+error) }
-                    Button { Task { await submit() } } label:{HStack{Spacer();if busy {ProgressView()}else{Text(register ? "Skapa konto" : "Logga in").bold()};Spacer()}.padding(8)}.buttonStyle(.borderedProminent).disabled(busy||email.isEmpty||password.count<10||(register&&name.isEmpty))
+            Form {
+                Section {
+                    VStack(alignment:.leading,spacing:14){
+                        Image(systemName:"location.circle.fill").font(.largeTitle).foregroundStyle(Brand.accent)
+                        Text("Nästa upptäckt väntar runt hörnet.").font(.title2.bold())
+                        Text("Hitta kampanjer, samla föremål och få din belöning.").foregroundStyle(.secondary)
+                    }.padding(.vertical,12)
+                }
+                Section(register ? "Skapa konto" : "Logga in") {
+                    if register { TextField("Ditt namn",text:$name).textContentType(.name) }
+                    TextField("E-postadress",text:$email).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().textContentType(.username)
+                    SecureField("Lösenord, minst 10 tecken",text:$password).textContentType(register ? .newPassword : .password)
+                }
+                if !error.isEmpty {Section{Label(error,systemImage:"exclamationmark.circle").foregroundStyle(.red)}}
+                Section {
+                    Button { Task { await submit() } } label:{HStack{Spacer();if busy {ProgressView()}else{Text(register ? "Skapa konto" : "Logga in").bold()};Spacer()}}
+                        .buttonStyle(.borderedProminent).controlSize(.large)
+                        .disabled(busy||email.isEmpty||password.count<10||(register&&name.isEmpty))
                     Button(register ? "Har du ett konto? Logga in" : "Ny här? Skapa konto"){register.toggle();error=""}.frame(maxWidth:.infinity)
-                }.padding(28)
-            }
+                }.listRowBackground(Color.clear)
+            }.navigationTitle("Vouchhunter")
         }
     }
     private func submit() async {
@@ -76,21 +88,21 @@ struct ExploreView: View {
     @State private var loading=true
     var body:some View {
         NavigationStack {
-            ScrollView {
-                Map(initialPosition:.region(MKCoordinateRegion(center:CLLocationCoordinate2D(latitude:59.3326,longitude:18.0649),span:MKCoordinateSpan(latitudeDelta:0.035,longitudeDelta:0.035)))) {
-                    UserAnnotation()
-                    ForEach(campaigns) {c in ForEach(c.stops){s in Annotation(s.name,coordinate:.init(latitude:s.lat,longitude:s.lon)){NavigationLink{HuntView(campaign:c)}label:{Image(systemName:"gift.fill").font(.title2).padding(12).background(.green,in:Circle()).foregroundStyle(.white)}}}}
-                }.frame(height:330).mapControls{MapUserLocationButton();MapCompass()}
-                VStack(alignment:.leading,spacing:18){
-                    Text("Ut och upptäck.").font(.largeTitle.bold())
-                    Text("Din nästa belöning börjar med en promenad.").foregroundStyle(.secondary)
+            List {
+                Section {
+                    Map(initialPosition:.region(MKCoordinateRegion(center:CLLocationCoordinate2D(latitude:59.3326,longitude:18.0649),span:MKCoordinateSpan(latitudeDelta:0.035,longitudeDelta:0.035)))) {
+                        UserAnnotation()
+                        ForEach(campaigns) {c in ForEach(c.stops){s in Annotation(s.name,coordinate:.init(latitude:s.lat,longitude:s.lon)){NavigationLink{HuntView(campaign:c)}label:{Image(systemName:"gift.fill").font(.title2).padding(12).background(Brand.accent,in:Circle()).foregroundStyle(.white)}}}}
+                    }.frame(height:300).mapControls{MapUserLocationButton();MapCompass()}
+                }.listRowInsets(EdgeInsets())
+                Section("Kampanjer att upptäcka") {
                     if loading {ProgressView("Hämtar kampanjer…")}
                     if let error {ContentUnavailableView{Label("Kunde inte hämta kampanjer",systemImage:"wifi.exclamationmark")}description:{Text(error)}actions:{Button("Försök igen"){Task{await load()}}}}
-                    if !loading && error == nil && campaigns.isEmpty {ContentUnavailableView("Här börjar nästa äventyr",systemImage:"map",description:Text("Det finns inga öppna kampanjer ännu. Nya jakter visas här när de publiceras."))}
-                    ForEach(campaigns){c in NavigationLink{HuntView(campaign:c)}label:{VStack(alignment:.leading,spacing:10){Text(c.brand.uppercased()).font(.caption.weight(.semibold)).tracking(1);Text(c.title).font(.title2.bold());Label(c.reward,systemImage:"ticket");Text("\(c.target) objekt · \(c.stops.count) platser").font(.subheadline).foregroundStyle(.secondary)}.frame(maxWidth:.infinity,alignment:.leading).padding(20).background(Color(.secondarySystemBackground),in:RoundedRectangle(cornerRadius:18))}.buttonStyle(.plain)}
-                    if let message=location.message {Text(message).font(.footnote).foregroundStyle(.secondary)}
-                }.padding(20)
-            }.navigationTitle("Vouchhunter").navigationBarTitleDisplayMode(.inline).refreshable{await load()}.task{location.start();await load()}.onDisappear{location.stop()}
+                    if !loading && error == nil && campaigns.isEmpty {ContentUnavailableView("Nästa äventyr är på väg",systemImage:"map",description:Text("Öppna kampanjer visas här när de publiceras."))}
+                    ForEach(campaigns){c in NavigationLink{HuntView(campaign:c)}label:{VStack(alignment:.leading,spacing:8){Text(c.brand).font(.subheadline).foregroundStyle(.secondary);Text(c.title).font(.headline);Label(c.reward,systemImage:"ticket").font(.subheadline);Text("\(c.target) objekt · \(c.stops.count) platser").font(.footnote).foregroundStyle(.secondary)}.padding(.vertical,8)}}
+                }
+                if let message=location.message {Section{Text(message).font(.footnote).foregroundStyle(.secondary)}}
+            }.listStyle(.insetGrouped).navigationTitle("Upptäck").refreshable{await load()}.task{location.start();await load()}.onDisappear{location.stop()}
         }
     }
     private func load() async {loading=true;defer{loading=false};do{let r:CampaignList=try await API.shared.request("/campaigns");campaigns=r.campaigns;error=nil}catch{self.error=error.localizedDescription}}
@@ -105,10 +117,10 @@ struct HuntView: View {
     var body:some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20){
-                Text(campaign.brand.uppercased()).font(.caption.bold()).tracking(1)
+                Text(campaign.brand).font(.subheadline).foregroundStyle(.secondary)
                 Text(campaign.title).font(.largeTitle.bold())
                 Text(campaign.description).foregroundStyle(.secondary)
-                VStack(alignment:.leading,spacing:12){Label(campaign.reward,systemImage:"ticket.fill").font(.title2.bold());Text("Samla \(campaign.target) objekt för att få din belöning.");if let hunt{ProgressView(value:Double(hunt.collected.count),total:Double(campaign.target));Text("\(hunt.collected.count) av \(campaign.target) insamlade").font(.subheadline)}}.padding(22).frame(maxWidth:.infinity,alignment:.leading).background(Color(red:0.85,green:0.95,blue:0.45),in:RoundedRectangle(cornerRadius:18))
+                VStack(alignment:.leading,spacing:12){Label(campaign.reward,systemImage:"ticket.fill").font(.title2.bold());Text("Samla \(campaign.target) objekt för att få din belöning.");if let hunt{ProgressView(value:Double(hunt.collected.count),total:Double(campaign.target));Text("\(hunt.collected.count) av \(campaign.target) insamlade").font(.subheadline)}}.padding(22).frame(maxWidth:.infinity,alignment:.leading).background(Color(.secondarySystemGroupedBackground),in:RoundedRectangle(cornerRadius:18))
                 if let hunt,hunt.completed != nil {Label("Du är klar! Din voucher finns i plånboken.",systemImage:"checkmark.seal.fill").foregroundStyle(.green)}
                 else if hunt == nil || (hunt?.expires ?? 0)<Date().timeIntervalSince1970 {
                     Text("En belöning reserveras i upp till 60 minuter, senast till kampanjens slut. Du behöver vara vid platserna för att samla.").font(.footnote).foregroundStyle(.secondary)
@@ -124,10 +136,10 @@ struct HuntView: View {
                 if let message=location.message {Text(message).foregroundStyle(.secondary)}
                 Text("Villkor").font(.headline);Text(campaign.terms).font(.subheadline);Text("Lös in hos \(campaign.venue). Vouchern gäller i \(campaign.voucher_days) dagar efter slutförd jakt.").font(.footnote).foregroundStyle(.secondary)
             }.padding(22)
-        }.navigationTitle("Jakten").navigationBarTitleDisplayMode(.inline)
+        }.background(Color(.systemGroupedBackground)).navigationTitle("Jakten").navigationBarTitleDisplayMode(.inline)
         .task{location.start();do{let r:HuntEnvelope=try await API.shared.request("/hunts/"+campaign.id);hunt=r.hunt}catch{self.error=error.localizedDescription}}
         .onDisappear{if selected == nil {location.stop()}}
-        .fullScreenCover(item:$selected,onDismiss:{location.start()}){s in CaptureView(stop:s){try await collect(s)}}
+        .fullScreenCover(item:$selected,onDismiss:{location.start()}){s in CaptureView(stop:s,model:campaign.model){try await collect(s)}}
     }
     private func canCollect(_ stop:Stop)->Bool {
         guard let hunt,hunt.completed == nil,hunt.expires>Date().timeIntervalSince1970,let loc=location.location,loc.horizontalAccuracy>=0,loc.horizontalAccuracy<=35,abs(loc.timestamp.timeIntervalSinceNow)<45 else{return false}

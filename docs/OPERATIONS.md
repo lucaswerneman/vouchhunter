@@ -62,3 +62,19 @@ Skriptet använder SQLite backup-API och integritetskontroll. Varje fil får ett
 ## Ej lanseringsklart
 
 Skarp publicering kräver fortfarande e-postverifiering, återställning av konton, personal-/adminhantering, kampanjredigering, granskning av villkor och personuppgifter, bättre fuskdetektion, driftsövervakning och verifierade mobila byggen. Klientens GPS är inte bevis på fysisk närvaro. Ingen testvoucher eller fiktiv kampanj får publiceras som ett skarpt erbjudande.
+
+## Administratör och 3D-filer
+
+Kundkonton får aldrig själva publicera, pausa eller konfigurera 3D-objekt. En kund skickar en brief och betalar ett färdigställt upplägg. Endast uttryckligen tilldelade plattformsadministratörer har tillgång till `/admin` och `/api/admin/*`.
+
+Admin tilldelas med ett separat lokalt bootstrap-kommando efter uttryckligt godkännande för det berörda kontot:
+
+```sh
+python3 scripts/grant_admin.py --email adminens-befintliga-konto@example.com
+```
+
+Det finns inget standardlösenord, automatiskt adminkonto eller publik endpoint för självuppgradering. Automatisk behörighetsgranskning stoppade skapandet av ett lokalt QA-adminkonto under utvecklingen; den tilldelningen har inte genomförts utan användarens godkännande.
+
+3D-filer sparas i `data/assets/` eller `ASSET_PATH`. Biblioteket använder två filer per objekt: en fristående GLB för Android och USDZ för iPhone. Filerna begränsas till 12 MB och kontrolleras på servern för grundläggande formatfel, externa GLB-resurser och osäkra arkivsökvägar. USDZ extraheras inte på servern. Filernas geometri, material och USD-referenser behöver dessutom valideras genom rendering före skarp publicering; formatkontrollen är inte en fullständig modellgranskning.
+
+Filer får slumpmässiga unika namn och original ersätts eller raderas inte. En betald eller publicerad kampanjs objekt är låst. Modeller laddas till respektive mobilklient; de delas offentligt endast medan en kopplad kampanj är aktiv, annars krävs adminbehörighet. Filbackup för `ASSET_PATH` måste ingå tillsammans med databasbackup inför skarp drift.

@@ -44,4 +44,17 @@ enum Keychain {
         }
         return try JSONDecoder().decode(T.self,from:data)
     }
+    func modelFile(assetID: String) async throws -> URL {
+        guard assetID.range(of:"^[a-f0-9]{24}$",options:.regularExpression) != nil else { throw APIError.message("Ogiltig modellreferens.") }
+        let directory=FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent("VouchhunterModels",isDirectory:true)
+        try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+        let file=directory.appendingPathComponent(assetID+".usdz")
+        if FileManager.default.fileExists(atPath:file.path) { return file }
+        var request=URLRequest(url:baseURL.appendingPathComponent("api/assets/"+assetID))
+        if let token=Keychain.read() { request.setValue("Bearer "+token,forHTTPHeaderField:"Authorization") }
+        let (data,response)=try await URLSession.shared.data(for:request)
+        guard (response as? HTTPURLResponse)?.statusCode==200,data.count<=12*1024*1024 else { throw APIError.message("Kampanjens 3D-objekt kunde inte hämtas.") }
+        if !FileManager.default.fileExists(atPath:file.path) { try data.write(to:file,options:.withoutOverwriting) }
+        return file
+    }
 }

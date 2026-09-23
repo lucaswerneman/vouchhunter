@@ -1,31 +1,47 @@
 # Arbetsstatus – 23 september 2026
 
-Leveransmålet är hela lösningen, inte en demo. Detta dokument beskriver faktisk status, inte löften om färdig funktion.
+Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och inte lanseringsklart.
 
-## Skrivet, verifiering pågår
-- API för registrering, inloggning, företagskonton, kampanjutkast och publiceringskontroll.
-- Transaktioner för reservationer, insamling och engångsinlösen.
-- Stripe Checkout och signaturkontroll för webhooks, ej testat mot ett anslutet Stripe-konto.
-- Företagsportal för kampanjer, utkast, statistik, betalningsöverlämning och inlösen.
-- iOS-källkod för konto, karta, kampanjer och jakt.
+## Implementerat
+- Separat kunddashboard för kampanjöversikt, resultat, betalningar och briefbeställningar.
+- Separat adminvy/API för kundförfrågningar, kampanjkonfiguration och publicering.
+- 3D-bibliotek med GLB-/USDZ-uppladdning, grundläggande filvalidering och plattformsparning.
+- Konton, företagsisolering, sessionshantering, reservationer, insamling och engångsinlösen.
+- Stripe Checkout med sparad order, signaturkontroll, kontroll av belopp/valuta/session och idempotenta webhook-id:n. Ej anslutet till ett skarpt konto.
+- Native Xcode-projekt med SwiftUI, MapKit, RealityKit, Keychain och voucher-QR.
+- Kotlin-klient med karta, ARCore/SceneView, Keystore, konto, insamling och voucher-QR.
+- Båda klienterna använder kampanjens adminvalda 3D-objekt.
+- Databasmigreringar, lokalt backupskript och GitHub Actions.
 
-## Återstår
-- Färdigställa och kompilera Xcode-projekt, AR och voucherplånbok.
-- Implementera Android-appen och verifiera på en fysisk Android-enhet.
-- Behörighets-/konkurrenstester och granskning av betalningsregler.
-- Kampanjredigering, personalinbjudningar, plattformsadministration, lösenordsåterställning och e-postverifiering.
-- Starkare skydd mot förfalskade positionsuppgifter (GPS från klient är inte bevis på närvaro).
-- Skarp domän, HTTPS, drift, mejl, Stripe-konto, priser, återbetalning och övervakning.
-- Apple Developer-/Google Play-konton, signering, appikoner, integritetsuppgifter och butikspublicering.
+## Verifierat lokalt
+- Xcode Debug simulatorbygge passerar efter de senaste ändringarna för native-design och modellinläsning.
+- Appen startar i den separata simulatorn `Vouchhunter iPhone 17 Pro`.
+- Inloggning mot lokal backend och lagring i Keychain fungerar med ad hoc-signering.
+- Nekad platsåtkomst hanteras och kampanjernas tomma läge visas.
+- 21 backendtester passerar: behörigheter, företagsisolering, reservationer under samtidighet, dubbelinsamling, dubbelinlösen, betalningssignaturer och filvalidering.
+- 3 Swift-domäntester passerade före senaste tillägget av valfri modellmetadata; ny körning följer.
+- Kundportalens inloggning, ursprungliga utkastflöde och nya briefbeställning verifierade i webbläsare. Dashboarden har granskats visuellt mot den uppdaterade Apple-riktningen.
 
-## Beslut under genomförandet
-- iPhone får SwiftUI/MapKit/RealityKit för direkt Xcode-stöd. Det ersätter tidigare preliminärt Unity-förslag.
-- Android ska dela API och regler, inte SwiftUI-kod.
-- Tidsbegränsad reservation på högst 60 minuter är ett implementerat arbetsantagande, fortfarande justerbart.
-- SQLite är den lokala datagrunden. Produktion behöver kapacitetsbedömning, backup och en definierad driftmodell innan lansering.
+## GitHub-kontroller
+- Första CI-körningen: backend godkänd.
+- Android APK kompilerades, men lint stoppade jobbet (saknade explicit subdomäninställning och ytterligare rapport behöver följas upp).
+- iOS-jobbet hittade ett AR-ankaranrop som skilde mellan Xcode-versioner; koden har ändrats till world-transform-ankare. Ny CI-körning krävs.
+- Första två Git-backuperna finns på origin/main. Senare ändringar pushas efter lokala kontroller.
 
-## Git
-- Användaren har angett https://github.com/lucaswerneman/vouchhunter som backup.
-- GitHubs API bekräftade att repot är publikt och har main som standardgren.
-- Hemligheter, databaser och byggresultat ska aldrig checkas in.
-- Senaste push och byggresultat uppdateras när de är verifierade.
+## Återstår före skarp leverans
+- Slutföra CI-rättningar och verifiera båda mobilapparnas aktuella källkod.
+- Fysisk AR-, GPS- och 3D-modellverifiering på iPhone och Android.
+- Adminpanelens visuella end-to-end-kontroll. Tilldelning av ett lokalt QA-adminkonto väntar på användarens uttryckliga godkännande efter automatisk behörighetsgranskning.
+- Kampanjredigering, personalinbjudningar, e-postverifiering och lösenordsåterställning.
+- Återbetalning, prisvisning, kontrollerad hantering av paus/avbokning och supportprocesser.
+- Starkare skydd mot förfalskade positionsuppgifter; GPS från klient är inte bevis på fysisk närvaro.
+- Skarp HTTPS-domän, drift, mejl, Stripe, Google Maps-nyckel, övervakning och extern backup av databas plus modeller.
+- Apple Developer-/Google Play-konton, signering, appikoner, integritetsuppgifter, universallänkar och butikspublicering.
+
+## Isolering och arbetsantaganden
+- Endast `/Users/lucaswerneman/Documents/ChatGPT/Vouchhunter` används för källkod och data. Separat app-id, port 8787, databas och namngiven simulator.
+- Inga andra kundprojekt har ändrats, inga globala Git-/Xcode-/molnsynkinställningar har ändrats.
+- iOS 18+; native iOS ersätter tidigare Unity-förslag. Android delar API, inte SwiftUI-kod.
+- Belöningsreservationen är högst 60 minuter som justerbart arbetsantagande.
+- SQLite behöver lasttest och driftbedömning innan större skarp trafik.
+- GitHub-repot är publikt. Hemligheter, lokala konton, databaser och uppladdade modeller ingår inte i Git.

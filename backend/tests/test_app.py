@@ -16,6 +16,13 @@ class PlatformTests(unittest.TestCase):
         self.owner=self.register('owner@example.test',company='Pizzeria Ett')
         self.other=self.register('other@example.test',company='Pizzeria Två')
         self.customer=self.register('customer@example.test')
+        self.admin=self.register('admin@example.test')
+        admin_id=self.call('/api/me',token=self.admin)[1]['id']
+        with self.app.store.transaction() as db:
+            db.execute('INSERT INTO platform_admins VALUES(?)',(admin_id,))
+            for aid,kind in [('asset_glb','glb'),('asset_usdz','usdz')]:
+                db.execute('INSERT INTO assets VALUES(?,?,?,?,?,?,?)',(aid,'Test asset',kind,aid+'.'+kind,100,'test-checksum',now()))
+            db.execute('INSERT INTO models VALUES(?,?,?,?,?)',('test_model','Test model','asset_glb','asset_usdz',now()))
         self.org=self.call('/api/me',token=self.owner)[1]['organizations'][0]['id']
         self.campaign=self.make_campaign()
     def call(self,path,body=None,token='',headers=None):
@@ -30,12 +37,14 @@ class PlatformTests(unittest.TestCase):
         self.assertEqual(status,200,result);return result['token']
     def make_campaign(self,capacity=2,target=1):
         body={'org_id':self.org,'title':'En riktig jakt','description':'Hitta en pizza utomhus.','reward':'En gratis pizza','terms':'En pizza per person under perioden.','venue':'Pizzeria Ett, Stockholm','starts':now()-30,'ends':now()+3600,'target':target,'capacity':capacity,'voucher_days':14,'stops':[{'name':'Sergels torg','lat':59.3326,'lon':18.0649,'radius':40}]}
-        status,c=self.call('/api/manage/campaigns',body,self.owner);self.assertEqual(status,200,c);return c
+        status,c=self.call('/api/admin/campaigns',body,self.admin);self.assertEqual(status,200,c)
+        status,c=self.call('/api/admin/campaigns/'+c['id']+'/model',{'model_id':'test_model'},self.admin);self.assertEqual(status,200,c)
+        return c
     def publish_for_test(self,c=None):
         c=c or self.campaign
         # Test fixture only: no production endpoint bypasses a payment.
         with self.app.store.transaction() as db:db.execute('UPDATE campaigns SET paid=1 WHERE id=?',(c['id'],))
-        status,result=self.call('/api/manage/campaigns/'+c['id']+'/publish',{},self.owner)
+        status,result=self.call('/api/admin/campaigns/'+c['id']+'/publish',{},self.admin)
         self.assertEqual(status,200,result)
     def collect(self,token=None,c=None,**override):
         c=c or self.campaign
@@ -43,7 +52,7 @@ class PlatformTests(unittest.TestCase):
         return self.call('/api/hunts/'+c['id']+'/collect',body,token or self.customer)
     def start(self,token=None,c=None):return self.call('/api/hunts/'+(c or self.campaign)['id']+'/start',{},token or self.customer)
     def test_unpaid_cannot_publish(self):
-        status,_=self.call('/api/manage/campaigns/'+self.campaign['id']+'/publish',{},self.owner)
+        status,_=self.call('/api/admin/campaigns/'+self.campaign['id']+'/publish',{},self.admin)
         self.assertEqual(status,409)
         self.assertEqual(self.call('/api/campaigns')[1]['campaigns'],[])
     def test_cross_company_cannot_publish_or_list(self):
@@ -78,11 +87,20 @@ class PlatformTests(unittest.TestCase):
         self.assertEqual(self.start()[0],200);self.assertEqual(self.collect()[0],200)
     def test_paused_campaign_preserves_issued_voucher(self):
         self.publish_for_test();self.start();code=self.collect()[1]['voucher']['code']
-        self.call('/api/manage/campaigns/'+self.campaign['id']+'/pause',{},self.owner)
+        self.call('/api/admin/campaigns/'+self.campaign['id']+'/pause',{},self.admin)
         self.assertEqual(self.call('/api/vouchers/redeem',{'code':code},self.owner)[0],200)
     def test_logout_revokes_token(self):
         self.assertEqual(self.call('/api/logout',{},self.customer)[0],200)
         self.assertEqual(self.call('/api/me',token=self.customer)[0],401)
+    def test_customer_cannot_administer_own_campaign(self):
+        self.assertEqual(self.call('/api/admin/campaigns/'+self.campaign['id']+'/pause',{},self.owner)[0],403)
+        self.assertEqual(self.call('/api/admin/assets',token=self.owner)[0],403)
+        self.assertEqual(self.call('/api/admin/organizations',token=self.owner)[0],403)
+    def test_customer_brief_is_isolated(self):
+        status,_=self.call('/api/manage/briefs',{'org_id':self.org,'title':'Ny lansering','description':'Marknadsför vår nya pizza.','reward':'En pizza','area':'Stockholm','preferred_start':'Oktober 2026'},self.owner)
+        self.assertEqual(status,200)
+        self.assertEqual(len(self.call('/api/manage/briefs',token=self.other)[1]['briefs']),0)
+        self.assertEqual(len(self.call('/api/admin/briefs',token=self.admin)[1]['briefs']),1)
     def test_csrf_origin_rejected(self):
         status,_=self.call('/api/logout',{},self.customer,{'HTTP_ORIGIN':'https://evil.example'})
         self.assertEqual(status,403)

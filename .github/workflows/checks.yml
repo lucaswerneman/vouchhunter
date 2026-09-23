@@ -41,3 +41,6 @@ jobs:
       - name: Build Android debug app
         working-directory: android
         run: ./gradlew assembleDebug lintDebug --no-daemon
+      - name: Show Android lint findings
+        if: always()
+        run: cat android/app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt || true

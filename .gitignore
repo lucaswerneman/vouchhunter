@@ -20,3 +20,4 @@ xcuserdata/
 coverage/
 backups/
 ios/Configuration/Local.xcconfig
+data/

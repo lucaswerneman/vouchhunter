@@ -39,6 +39,7 @@ class SessionStore(context: Context) {
     fun clear() { prefs.edit().remove("token").apply() }
 }
 class Api(context: Context) {
+    private val cache = java.io.File(context.cacheDir, "VouchhunterModels")
     val session = SessionStore(context)
     suspend fun request(path: String, body: JSONObject? = null): JSONObject = withContext(Dispatchers.IO) {
         check(!BuildConfig.API_BASE_URL.contains("configuration-required.invalid")) { "Serveradressen är inte konfigurerad ännu." }
@@ -59,4 +60,27 @@ class Api(context: Context) {
             result
         } finally { connection.disconnect() }
     }
+    suspend fun modelFile(assetID: String): java.io.File = withContext(Dispatchers.IO) {
+        require(assetID.matches(Regex("[a-f0-9]{24}"))) { "Ogiltigt 3D-objekt." }
+        cache.mkdirs()
+        val file=java.io.File(cache,"$assetID.glb")
+        if(file.isFile) return@withContext file
+        val connection=URL(BuildConfig.API_BASE_URL+"/api/assets/"+assetID).openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout=15000;connection.readTimeout=30000
+            connection.instanceFollowRedirects=false
+            session.read()?.let{connection.setRequestProperty("Authorization","Bearer $it")}
+            check(connection.responseCode==200){"3D-objektet kunde inte hämtas."}
+            val output=java.io.ByteArrayOutputStream()
+            connection.inputStream.use { input ->
+                val buffer=ByteArray(8192)
+                while(true){val count=input.read(buffer);if(count<0)break;check(output.size()+count<=12*1024*1024){"3D-objektet är för stort."};output.write(buffer,0,count)}
+            }
+            val bytes=output.toByteArray()
+            check(bytes.size>=20 && String(bytes.copyOfRange(0,4),Charsets.US_ASCII)=="glTF"){"Ogiltig 3D-modell."}
+            if(file.createNewFile())file.outputStream().use{it.write(bytes)}
+            file
+        } finally {connection.disconnect()}
+    }
+
 }

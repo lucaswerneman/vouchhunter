@@ -24,7 +24,7 @@ Företagsportalen är en separat webbapplikation i samma repo. Drift, konfigurat
 
 ## Kampanjer vid lansering
 
-Företagen ska själva kunna skapa och hantera kampanjer. Antal stopp, insamlingsmål, belöning, giltighet och inlösenställen konfigureras per kampanj. Pizza Hut och pizzajakten i Stockholm är illustrationsexempel; inget samarbete eller erbjudande finns bekräftat.
+Kunden (företaget) får en dashboard för kampanjer, resultat och betalningar samt lämnar en enkel kampanjbrief. Plattformens administratör förbereder kampanjerna bakom kulisserna: platser, 3D-objekt, insamlingsmål, belöningspott, giltighet och publicering. Detta ersätter det tidigare förslaget om teknisk självbetjäning för företagen. Pizza Hut och pizzajakten i Stockholm är illustrationsexempel; inget samarbete eller erbjudande finns bekräftat.
 
 Arbetsförslag: varje deltagare kan samla varje objekt en gång, oberoende av andra deltagare. Placeringarna måste vara lämpliga för en jakt utomhus. Testdata och testvouchers hålls åtskilda från skarpa kampanjer och riktiga belöningar.
 
@@ -52,10 +52,10 @@ Arbetsförslag: varje deltagare kan samla varje objekt en gång, oberoende av an
 
 ### Företag och administration
 
-- Skapa kampanjutkast med namn, bild, erbjudande, datum och villkor.
-- Välja ett objekt ur ett litet 3D-bibliotek och ange insamlingsmål.
+- Kunden lämnar en brief. Admin skapar kampanjutkast med namn, bild, erbjudande, datum och villkor.
+- Admin laddar upp och väljer 3D-objekt för båda plattformarna samt anger insamlingsmål.
 - Ange platser, antal belöningar och deltagande inlösenställen.
-- Förhandsgranska, publicera och pausa en kampanj.
+- Kunden granskar och betalar; admin publicerar och pausar kampanjen.
 - Enkel personalvy för att kontrollera och lösa in vouchers.
 - Statistik över starter, slutförda jakter, utfärdade och inlösta vouchers.
 - Företagskonton, medlemsinbjudningar och roller för ägare, kampanjansvarig och personal.
@@ -108,7 +108,7 @@ Kriterium: hela insamlingsflödet fungerar på fysiska telefoner från båda pla
 
 ### 3. Företagsportal, vouchers och inlösen
 
-Företaget kan skapa, förhandsgranska och publicera en kampanj, hantera inlösenställen och personal samt följa resultat. Kunden får en riktig voucher enligt kampanjvillkoren och personalen löser in den via QR-kod.
+Företaget kan lämna en brief, granska upplägget, betala och följa resultat. Administratören konfigurerar och publicerar kampanjen samt hanterar 3D-biblioteket. Kunden får en riktig voucher enligt kampanjvillkoren och personalen löser in den via QR-kod.
 
 Kriterium: hela kedjan från publicering till inlösen fungerar. Samtidiga slutföranden överskrider inte belöningstaket. Samtidiga inlösenförsök kan inte använda en voucher mer än en gång. Eventuella reservationsregler är verifierade.
 
@@ -124,8 +124,8 @@ Beslutat: företagen betalar per kampanj. Abonnemang ingår inte i den beslutade
 
 Föreslaget köpflöde för lanseringen:
 
-1. Företaget skapar och sparar ett kampanjutkast.
-2. Plattformen validerar kampanjens innehåll, platser, period, insamlingsmål och belöningspott.
+1. Företaget skickar en brief med produkt, belöning, område och önskad period.
+2. Plattformens administratör förbereder och validerar kampanjens innehåll, 3D-objekt, platser, period, insamlingsmål och belöningspott.
 3. Företaget får se pris, vad som ingår och betalningsvillkor före köp.
 4. Företaget betalar för kampanjen och får betalningsbekräftelse samt kvitto eller fakturaunderlag.
 5. Backend verifierar betalningen med betalningsleverantören. Kampanjen blir publicerbar när även övriga publiceringskrav är uppfyllda. Schemalagda kampanjer startar på avsedd tid.
@@ -143,3 +143,7 @@ Integration med kassasystem, uppladdning av egna 3D-modeller, poängnivåer, top
 ## Nästa steg
 
 Slutför reglerna för belöningstilldelning och prissättningen per kampanj. Specificera datamodell och API samt verifiera den tekniska grunden för båda mobilplattformarna. Ta fram skärmflöden och visuell riktning med referenser innan gränssnitten implementeras. Fortsätt sedan genom samtliga leveransetapper till verifierad lanseringsberedskap.
+
+## Designriktning beslutad av användaren
+
+Apples designspråk och native iOS-kontroller med Vouchhunters egna färger. SwiftUI-systemkomponenter, SF Symbols, systemtypografi, dynamiska systembakgrunder och grön accent. Kunddashboard och admin följer samma hierarki och visuella lugn. Se docs/DESIGN.md.

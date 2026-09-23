@@ -107,7 +107,11 @@ class MainActivity : ComponentActivity(), LocationListener {
                     if(here==null || here.accuracy>35 || System.currentTimeMillis()-here.time>45000) message("Väntar på en noggrann position. Försök igen utomhus.")
                     else {Location.distanceBetween(here.latitude,here.longitude,s.getDouble("lat"),s.getDouble("lon"),result)
                         if(result[0]>s.getInt("radius")) message("Gå närmare platsen. Du är ${result[0].toInt()} meter bort.")
-                        else capture.launch(Intent(this@MainActivity,CaptureActivity::class.java).putExtra("stop_id",s.getString("id"))) }
+                        else {
+                            val model=c.optJSONObject("model")
+                            if(model==null)message("Kampanjen saknar ett 3D-objekt.")
+                            else capture.launch(Intent(this@MainActivity,CaptureActivity::class.java).putExtra("stop_id",s.getString("id")).putExtra("asset_id",model.getString("glb_asset_id")))
+                        } }
                 }
             }
             text(c.getString("terms"),13f);text("Lös in hos "+c.getString("venue"),13f);button("Till dina vouchers"){wallet()};button("Alla kampanjer"){explore()}
