@@ -1,5 +1,19 @@
 # Designbeslut
 
+## Gällande riktning – WhatsApp, neutral palett, kundens kampanj
+
+Detta ersätter tidigare Family/MSCHF-riktningar nedan, som finns kvar enbart som historik.
+
+- WhatsApp iOS är referensen: systemtypografi, ljusgrå bakgrund, vita grupperade rader, diskreta avdelare och tre stabila flikar: Upptäck, Kuponger, Konto.
+- [WhatsApp-inställningar](https://refero.design/screens/f3caac1c-c651-4836-97e8-e43b46b76a73) styr grupper och radrytm. [Kontaktinformation](https://refero.design/screens/125f0071-b6c3-49fd-8005-a4b310f8f023) styr kampanjens avatar, namn och informationsgrupper. [Platsväljaren](https://refero.design/screens/d70f8957-114d-41b6-9b98-5c5c61ec36ac) styr kartans bottenpanel. Dessa bilder har granskats, inte bara sökresultat.
+- Vouchhunters gemensamma kontroller använder grafitgrått. Kampanjen kan ha egen accent, bakgrund, logotyp och hero-bild; redigering sker på obetalda utkast och låses när betalning inletts.
+- Brillo-exemplet använder rött #FF113A och gräddvitt #FFF5EB från [Brillo Pizza](https://brillopizza.se/). Kampanjen är fiktiv och kupongen saknar inlösenvärde.
+- Resan börjar med kampanj och belöning. Inloggning behövs först för en riktig jakt. GPS efterfrågas i jakten och kamera vid insamling.
+- Pizza, lugn svävning, pulserande ring och haptik ger spelkänsla. Minska rörelse stoppar de kontinuerliga animationerna. AR är lokal ytplacering inom GPS-radie, inte ett delat geospatialt ankare.
+- Simulatorn provar tio fynd. Det separata fälttestet på Odenplan provar ett fynd med riktig GPS och AR. Det får aldrig presenteras som en skarp Brillo-kampanj.
+
+## Historik – ersatta riktningar
+
 Direkt bygge enligt användarens mandat. Refero-sökningen blockerades av NO_SUBSCRIPTION; inga externa skärmar har påståtts granskade. Refero-skillens lokala Typography, Color, Craft Details och Anti-AI-slop är referensunderlag.
 
 ## Låst riktning

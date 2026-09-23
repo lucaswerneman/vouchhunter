@@ -293,7 +293,7 @@ function addStop() {
 function detail(id) {
   const c = campaigns.find((c) => c.id === id);
   openModal(
-    `<div class="modalhead"><span class="badge ${c.status === "active" ? "active" : ""}">${status(c)}</span><button class="ghost" id="close" aria-label="Stäng">✕</button></div><div class="eyebrow">${esc(c.brand)}</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><div class="detail-grid"><div><small>Belöning</small><strong>${esc(c.reward)}</strong></div><div><small>Inlösen</small><strong>${esc(c.venue)}</strong></div><div><small>Upplägg</small>${c.target} objekt · ${c.capacity} belöningar</div><div><small>Period</small>${date(c.starts)} – ${date(c.ends)}</div><div><small>Betalning</small>${c.paid ? "Betald" : c.model_id ? "Redo för betalning" : "Upplägget förbereds"}</div><div><small>Resultat</small>${c.started} startade · ${c.completed} slutförda · ${c.redeemed} inlösta</div></div><h3>Platser i kampanjen</h3><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}${adminMode ? `<small>${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</small>` : ""}</li>`).join("")}</ul><h3>Villkor</h3><p>${esc(c.terms)}</p><p class="helper">Vouchern gäller i ${c.voucher_days} dagar efter slutförd jakt.</p>${adminMode ? `<section class="admin-config"><h3>3D-objekt</h3><p class="helper">Både iPhone- och Android-format måste vara kopplade innan kampanjen kan betalas.</p><form id="model-form"><label for="model-id">Objekt i biblioteket</label><select id="model-id" required ${c.editing_locked ? "disabled" : ""}><option value="">Välj 3D-objekt</option>${assetLibrary.models.map((m) => `<option value="${m.id}" ${m.id === c.model_id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select>${!c.editing_locked ? '<button class="small" type="submit">Koppla objekt</button>' : ""}</form></section>` : ""}<div class="error" role="alert"></div><div class="actions">${c.status === "active" ? '<button id="share">Kopiera kampanjlänk</button>' : ""}${adminMode && !c.editing_locked ? '<button id="edit-campaign">Redigera upplägg</button>' : ""}${adminMode ? `<button id="admin-change" class="${c.status === "active" ? "" : "primary"}" ${!c.paid || !c.model_id ? "disabled" : ""}>${c.status === "active" ? "Pausa kampanj" : "Publicera kampanj"}</button>` : !c.paid ? `<button id="pay" class="primary" ${!c.model_id ? "disabled" : ""}>${c.model_id ? "Granska pris & betala →" : "Vi förbereder din kampanj"}</button>` : '<span class="badge active">Betald · vi sköter publiceringen</span>'}</div>`,
+    `<div class="modalhead"><span class="badge ${c.status === "active" ? "active" : ""}">${status(c)}</span><button class="ghost" id="close" aria-label="Stäng">✕</button></div><div class="eyebrow">${esc(c.brand)}</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><div class="detail-grid"><div><small>Belöning</small><strong>${esc(c.reward)}</strong></div><div><small>Inlösen</small><strong>${esc(c.venue)}</strong></div><div><small>Upplägg</small>${c.target} objekt · ${c.capacity} belöningar</div><div><small>Period</small>${date(c.starts)} – ${date(c.ends)}</div><div><small>Betalning</small>${c.paid ? "Betald" : c.model_id ? "Redo för betalning" : "Upplägget förbereds"}</div><div><small>Resultat</small>${c.started} startade · ${c.completed} slutförda · ${c.redeemed} inlösta</div></div><h3>Platser i kampanjen</h3><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}${adminMode ? `<small>${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</small>` : ""}</li>`).join("")}</ul><h3>Villkor</h3><p>${esc(c.terms)}</p><p class="helper">Vouchern gäller i ${c.voucher_days} dagar efter slutförd jakt.</p>${adminMode ? `<section class="admin-config"><h3>3D-objekt</h3><p class="helper">Både iPhone- och Android-format måste vara kopplade innan kampanjen kan betalas.</p><form id="model-form"><label for="model-id">Objekt i biblioteket</label><select id="model-id" required ${c.editing_locked ? "disabled" : ""}><option value="">Välj 3D-objekt</option>${assetLibrary.models.map((m) => `<option value="${m.id}" ${m.id === c.model_id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}</select>${!c.editing_locked ? '<button class="small" type="submit">Koppla objekt</button>' : ""}</form></section>` : ""}<div class="error" role="alert"></div><div class="actions">${c.status === "active" ? '<button id="share">Kopiera kampanjlänk</button>' : ""}${!c.editing_locked ? '<button id="edit-branding">Anpassa varumärke</button>' : ""}${adminMode && !c.editing_locked ? '<button id="edit-campaign">Redigera upplägg</button>' : ""}${adminMode ? `<button id="admin-change" class="${c.status === "active" ? "" : "primary"}" ${!c.paid || !c.model_id ? "disabled" : ""}>${c.status === "active" ? "Pausa kampanj" : "Publicera kampanj"}</button>` : !c.paid ? `<button id="pay" class="primary" ${!c.model_id ? "disabled" : ""}>${c.model_id ? "Granska pris & betala →" : "Vi förbereder din kampanj"}</button>` : '<span class="badge active">Betald · vi sköter publiceringen</span>'}</div>`,
   );
   if ($("#share"))
     $("#share").onclick = async () => {
@@ -318,6 +318,7 @@ function detail(id) {
         e.target.disabled = false;
       }
     };
+  if ($("#edit-branding")) $("#edit-branding").onclick = () => brandingForm(c);
   if ($("#edit-campaign"))
     $("#edit-campaign").onclick = () => campaignForm(null, c);
   if ($("#admin-change"))
@@ -355,6 +356,34 @@ function detail(id) {
         $("#modal .error").textContent = ex.message;
       }
     };
+}
+function safeBranding(raw = {}) {
+  const color = (v, fallback) => /^#[0-9a-f]{6}$/i.test(v || "") ? v : fallback;
+  const image = (v) => { try { const u = new URL(v); return u.protocol === "https:" && !u.username && !u.password ? u.href : ""; } catch { return ""; } };
+  return {accent_color: color(raw.accent_color, "#242424"), background_color: color(raw.background_color, "#F5F5F5"), logo_url: image(raw.logo_url), hero_url: image(raw.hero_url)};
+}
+function brandInk(hex) {
+  const rgb = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16) / 255).map(c => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4);
+  const lum = rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+  return (lum + .05) / .05 >= 1.05 / (lum + .05) ? "#000000" : "#FFFFFF";
+}
+function brandingPreview(c, raw, live = false) {
+  const b = safeBranding(raw);
+  return `<div class="branding-preview" style="--campaign-surface:${b.background_color};--campaign-accent:${b.accent_color};--campaign-ink:${brandInk(b.accent_color)};color:${brandInk(b.background_color)}">${b.logo_url ? `<img class="campaign-logo" src="${esc(b.logo_url)}" referrerpolicy="no-referrer" alt="${esc(c.brand)}">` : `<strong>${esc(c.brand)}</strong>`}${b.hero_url ? `<img class="campaign-hero" src="${esc(b.hero_url)}" referrerpolicy="no-referrer" alt="Kampanjbild">` : ""}<h2>${esc(c.title)}</h2><span>${esc(c.reward)}</span><br>${live ? `<a class="campaign-action" href="vouchhunter://campaign/${encodeURIComponent(c.id)}">Öppna i appen</a>` : `<span class="campaign-action">Öppna jakten · förhandsvisning</span>`}</div>`;
+}
+function brandingForm(c) {
+  const b = safeBranding(c.branding);
+  openModal(`<form id="branding-form"><div class="modalhead"><h2>Ert varumärke</h2><button type="button" id="close" class="ghost" aria-label="Stäng">✕</button></div><p>Logotyp, kampanjbild och färger visas i er kampanj. Vouchhunters navigation behåller sitt gemensamma utseende.</p><div class="form-grid"><label>Accentfärg<input type="color" name="accent_color" value="${b.accent_color}"></label><label>Bakgrundsfärg<input type="color" name="background_color" value="${b.background_color}"></label></div><label>Logotypens bildadress<input type="url" name="logo_url" value="${esc(b.logo_url)}" placeholder="https://…/logotyp.png"></label><label>Kampanjbildens adress<input type="url" name="hero_url" value="${esc(b.hero_url)}" placeholder="https://…/produkt.jpg"></label><p class="helper">Använd offentliga HTTPS-bilder i PNG eller JPEG som ni har rätt att använda. Tomma bildfält visar ert namn istället.</p><div id="brand-preview">${brandingPreview(c,b)}</div><div class="error" role="alert"></div><div class="actions"><button class="primary" type="submit">Spara varumärke</button></div></form>`);
+  const form = $("#branding-form");
+  form.oninput = () => { dirty = true; $("#brand-preview").innerHTML = brandingPreview(c,Object.fromEntries(new FormData(form))); };
+  form.onsubmit = async e => {
+    e.preventDefault(); e.submitter.disabled = true;
+    try {
+      await api(`/${adminMode ? "admin" : "manage"}/campaigns/${c.id}/branding`, Object.fromEntries(new FormData(form)));
+      dirty = false; $("#modal").close(); await loadCampaigns(); dashboard(); toast("Varumärket är sparat.");
+    } catch(ex) { $("#branding-form .error").textContent = ex.message; }
+    finally { e.submitter.disabled = false; }
+  };
 }
 function briefForm() {
   openModal(
@@ -547,7 +576,7 @@ async function publicCampaign(id) {
   try {
     const c = await api("/campaigns/" + id);
     $("#app").innerHTML =
-      `<main class="public"><header>${brand}</header><div class="eyebrow">${esc(c.brand)} · UTOMHUS</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><section class="reward"><div class="eyebrow">DIN BELÖNING</div><h2>${esc(c.reward)}</h2><p>Samla ${c.target} objekt · ${c.stops.length} platser att upptäcka</p></section><h2>Här börjar äventyret</h2><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}<span>${icon("pin")}</span></li>`).join("")}</ul><h3>Gäller ${date(c.starts)} – ${date(c.ends)}</h3><p>${esc(c.terms)}</p><p>Inlösen: ${esc(c.venue)}. Din voucher gäller i ${c.voucher_days} dagar.</p><p class="helper">Jakten genomförs i Vouchhunter-appen. Appbutikslänkar visas när apparna är publicerade.</p></main>`;
+      `<main class="public"><header>${brand}</header>${brandingPreview(c,c.branding,true)}<div class="eyebrow">${esc(c.brand)} · Utomhus</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><section class="reward"><div class="eyebrow">DIN BELÖNING</div><h2>${esc(c.reward)}</h2><p>Samla ${c.target} objekt · ${c.stops.length} platser att upptäcka</p></section><h2>Här börjar äventyret</h2><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}<span>${icon("pin")}</span></li>`).join("")}</ul><h3>Gäller ${date(c.starts)} – ${date(c.ends)}</h3><p>${esc(c.terms)}</p><p>Inlösen: ${esc(c.venue)}. Din voucher gäller i ${c.voucher_days} dagar.</p><p class="helper">Jakten genomförs i Vouchhunter-appen. Appbutikslänkar visas när apparna är publicerade.</p></main>`;
   } catch (ex) {
     $("#app").innerHTML =
       `<main class="public">${brand}<h1>Kampanjen är inte tillgänglig.</h1><p>${esc(ex.message)}</p></main>`;

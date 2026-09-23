@@ -4,6 +4,10 @@ Plattform för kampanjer med skattjakter utomhus, AR-insamling och voucherinlös
 
 **Under aktiv utveckling. Inte lanseringsklar.** Projektet innehåller en fungerande lokal API-/portalgrund och en iOS-app under uppbyggnad. iOS- och Android-byggen verifieras i CI. Fysisk AR och hela skarpa kundflödet är ännu inte verifierade. Skarp drift och butikspublicering återstår. Se `docs/STATUS.md` för verifieringsstatus.
 
+## Testa på Odenplan
+
+Börja med [startguiden för iPhone 16e](docs/STARTA-HAR-ODENPLAN.md). Den beskriver installation, testplats och hela resan till testkupongen. Apple-signering och fysisk verifiering återstår; inget TestFlight-bygge är uppladdat.
+
 ## Struktur
 
 - `backend/` – WSGI-API, SQLite, konton, kampanjer, reservationer, vouchers och Stripe-koppling.

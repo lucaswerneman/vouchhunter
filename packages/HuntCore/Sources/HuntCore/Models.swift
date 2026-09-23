@@ -22,6 +22,7 @@ public struct Campaign: Codable, Identifiable, Sendable {
   public let ends: TimeInterval
   public let voucher_days: Int
   public let stops: [Stop]
+  public let branding: CampaignBranding?
   public let model: CampaignModel?
 }
 public struct CampaignModel: Codable, Sendable {
@@ -65,4 +66,11 @@ public enum Geo {
       pow(sin((p2 - p1) / 2), 2) + cos(p1) * cos(p2) * pow(sin((lon2 - lon1) * Double.pi / 360), 2)
     return 6_371_000 * 2 * asin(sqrt(min(1, max(0, a))))
   }
+}
+
+public struct CampaignBranding: Codable, Sendable {
+  public let accent_color: String?
+  public let background_color: String?
+  public let logo_url: String?
+  public let hero_url: String?
 }

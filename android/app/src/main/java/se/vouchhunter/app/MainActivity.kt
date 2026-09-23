@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity(), LocationListener {
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 48, 24, 32); setBackgroundColor(HuntStyle.canvas) }
         setContentView(ScrollView(this).apply { addView(root) }); heading(title)
     }
-    private fun heading(text: String) { root.addView(TextView(this).apply { this.text = text; textSize = 30f; HuntStyle.text(this); setPadding(0,20,0,20); typeface = android.graphics.Typeface.MONOSPACE }) }
+    private fun heading(text: String) { root.addView(TextView(this).apply { this.text = text; textSize = 30f; HuntStyle.text(this); setPadding(0,20,0,20); typeface = android.graphics.Typeface.DEFAULT_BOLD }) }
     private fun text(value: String, size: Float = 16f) { root.addView(TextView(this).apply { text = value; textSize = size; setPadding(0,10,0,12); HuntStyle.text(this) }) }
     private fun button(label: String, action: () -> Unit) { root.addView(Button(this).apply { text = label; HuntStyle.button(this); layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = (12 * resources.displayMetrics.density).toInt() }; setOnClickListener { action() } }) }
     private fun input(label: String, kind: Int): EditText {
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity(), LocationListener {
         map = MapView(this).also { view ->
             view.onCreate(null);root.addView(view,LinearLayout.LayoutParams(-1,650));view.onResume()
             view.getMapAsync { google ->
-                google.setMapStyle(com.google.android.gms.maps.model.MapStyleOptions("""[{"elementType":"geometry","stylers":[{"color":"#20252b"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#b7bdc2"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#20252b"}]},{"featureType":"poi","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"geometry","stylers":[{"color":"#41474d"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#10191e"}]}]"""))
+                google.setMapStyle(com.google.android.gms.maps.model.MapStyleOptions("""[{"elementType":"geometry","stylers":[{"color":"#f2f2f2"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#666666"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#f2f2f2"}]},{"featureType":"poi","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#dbe5ec"}]}]"""))
                 google.isBuildingsEnabled = true
                 stops.forEach { s -> google.addMarker(MarkerOptions().position(LatLng(s.getDouble("lat"),s.getDouble("lon"))).title(s.getString("name"))) }
                 val first=stops.firstOrNull();google.moveCamera(CameraUpdateFactory.newLatLngZoom(if(first==null) LatLng(59.3326,18.0649) else LatLng(first.getDouble("lat"),first.getDouble("lon")),14f))

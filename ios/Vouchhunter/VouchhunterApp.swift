@@ -6,8 +6,8 @@ import SwiftUI
 @main struct VouchhunterApp: App {
   var body: some Scene {
     WindowGroup {
-      #if DEBUG && targetEnvironment(simulator)
-        if ProcessInfo.processInfo.arguments.contains("--preview-hunt") {
+      #if DEBUG || FIELD_TESTING
+        if LocalExperience.active {
           SimulatorExperience().vouchhunterTheme()
         } else {
           RootView().vouchhunterTheme()
@@ -32,25 +32,18 @@ struct RootView: View {
   @State private var linkedCampaign: Campaign?
   @State private var linkError: String?
   var body: some View {
-    Group {
-      if session.loggedIn {
-        TabView {
-          ExploreView().tabItem { Label("Upptäck", systemImage: "map") }
-          WalletView().tabItem { Label("Vouchers", systemImage: "ticket") }
-          NavigationStack {
-            List {
-              Section("Ditt konto") {
-                Button("Logga ut", role: .destructive) { Task { await session.logout() } }
-              }
-            }.listStyle(.plain).scrollContentBackground(.hidden).navigationTitle("KONTO")
-              .navigationBarTitleDisplayMode(.inline)
-          }.tabItem { Label("Profil", systemImage: "person.crop.circle") }
-        }
-      } else {
-        LoginView(session: session)
-      }
+    TabView {
+      ExploreView().tabItem { Label("Upptäck", systemImage: "map") }
+      Group {
+        if session.loggedIn { WalletView() } else { LoginView(session: session) }
+      }.tabItem { Label("Kuponger", systemImage: "ticket") }
+      AccountView(session: session).tabItem { Label("Konto", systemImage: "person.crop.circle") }
     }
-    .sheet(item: $linkedCampaign) { c in NavigationStack { HuntView(campaign: c) } }
+    .environmentObject(session)
+    .sheet(item: $linkedCampaign) { c in
+      NavigationStack { CampaignOverviewView(campaign: c) }.environmentObject(session)
+        .vouchhunterTheme()
+    }
     .onOpenURL { url in
       guard let id = url.pathComponents.last,
         id.range(of: "^[a-f0-9]{24}$", options: .regularExpression) != nil
@@ -71,59 +64,223 @@ struct RootView: View {
     }
   }
 }
-// Shared product tokens: MSCHF structure, native controls and Vouchhunter green.
-enum Brand { static let accent = HuntStyle.electric }
+// WhatsApp iOS reference: neutral system type, grouped surfaces, inset separators.
+enum Brand { static let accent = HuntStyle.accent }
 enum HuntStyle {
-  static let electric = Color(red: 0.18, green: 0.95, blue: 0.42)
-  static let green = electric
-  static let canvas = Color.black
-  static let surface = Color(white: 0.12)
-  static let line = Color.white.opacity(0.45)
-  static let mint = electric.opacity(0.10)
+  static let accent = Color(white: 0.16)
+  static let electric = accent
+  static let green = accent
+  static let canvas = Color(white: 0.96)
+  static let surface = Color.white
+  static let line = Color(white: 0.86)
+  static let mint = Color(white: 0.92)
 }
 extension View {
   func vouchhunterTheme() -> some View {
-    self.preferredColorScheme(.dark).tint(HuntStyle.electric)
-      .font(.system(.body, design: .monospaced)).fontDesign(.monospaced)
-      .background(HuntStyle.canvas)
+    self.preferredColorScheme(.light).tint(HuntStyle.accent)
+      .font(.body).fontDesign(.default).background(HuntStyle.canvas)
   }
   func huntPanel() -> some View {
-    self.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-      .background(HuntStyle.surface, in: RoundedRectangle(cornerRadius: 12))
-      .overlay(RoundedRectangle(cornerRadius: 12).stroke(HuntStyle.line, lineWidth: 0.5))
+    self.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+      .background(HuntStyle.surface, in: RoundedRectangle(cornerRadius: 24))
   }
 }
 struct HuntRule: View {
-  var body: some View {
-    Rectangle().fill(HuntStyle.line).frame(height: 0.5).accessibilityHidden(true)
-  }
+  var body: some View { Divider().accessibilityHidden(true) }
 }
 struct HuntSecondaryButton: ButtonStyle {
   @Environment(\.isEnabled) private var enabled
   func makeBody(configuration: Configuration) -> some View {
-    configuration.label.font(.system(.subheadline, design: .monospaced))
-      .textCase(.uppercase).padding(.horizontal, 16).frame(minHeight: 44)
-      .foregroundStyle(enabled ? Color.white : Color.secondary)
-      .background(configuration.isPressed ? HuntStyle.surface : .clear)
-      .overlay(RoundedRectangle(cornerRadius: 8).stroke(HuntStyle.line, lineWidth: 0.5))
+    configuration.label.font(.body.weight(.medium)).padding(.horizontal, 16).frame(minHeight: 44)
+      .foregroundStyle(enabled ? HuntStyle.accent : Color.secondary)
+      .background(configuration.isPressed ? HuntStyle.mint : HuntStyle.surface, in: Capsule())
   }
 }
 struct HuntPillButton: ButtonStyle {
+  var fill = HuntStyle.accent
+  var ink = Color.white
   @Environment(\.isEnabled) private var enabled
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   func makeBody(configuration: Configuration) -> some View {
-    configuration.label.font(.system(.body, design: .monospaced, weight: .regular)).textCase(
-      .uppercase
+    configuration.label.font(.body.weight(.semibold))
+      .padding(.horizontal, 20).frame(minHeight: 50).frame(maxWidth: .infinity)
+      .foregroundStyle(enabled ? ink : Color.secondary)
+      .background(enabled ? fill : HuntStyle.mint, in: Capsule())
+      .opacity(configuration.isPressed ? 0.8 : 1)
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: configuration.isPressed)
+  }
+}
+extension Color {
+  init(brandHex: String?, fallback: UInt32 = 0x242424) {
+    let cleaned = brandHex?.replacingOccurrences(of: "#", with: "") ?? ""
+    let value = cleaned.count == 6 ? UInt32(cleaned, radix: 16) ?? fallback : fallback
+    self.init(
+      red: Double((value >> 16) & 255) / 255, green: Double((value >> 8) & 255) / 255,
+      blue: Double(value & 255) / 255)
+  }
+  static func brandText(on hex: String?) -> Color {
+    let value =
+      UInt32((hex ?? "#242424").replacingOccurrences(of: "#", with: ""), radix: 16) ?? 0x242424
+    let channels = [16, 8, 0].map { shift -> Double in
+      let c = Double((value >> shift) & 255) / 255
+      return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+    }
+    let luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+    return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) ? .black : .white
+  }
+}
+extension Campaign {
+  var accent: Color { Color(brandHex: branding?.accent_color) }
+  var accentText: Color { Color.brandText(on: branding?.accent_color) }
+  var brandSurface: Color { Color(brandHex: branding?.background_color, fallback: 0xF2F2F2) }
+}
+struct CampaignAvatar: View {
+  let campaign: Campaign
+  var size: CGFloat = 60
+  var body: some View {
+    ZStack {
+      Circle().fill(campaign.brandSurface)
+      if LocalExperience.active {
+        Image("BrilloLogo").resizable().scaledToFit().padding(size * 0.16)
+      } else if let source = campaign.branding?.logo_url, let url = URL(string: source),
+        url.scheme == "https"
+      {
+        AsyncImage(url: url) { image in
+          image.resizable().scaledToFit()
+        } placeholder: {
+          Text(String(campaign.brand.prefix(1))).font(.system(size: size * 0.4, weight: .semibold))
+        }.padding(size * 0.12)
+      } else {
+        Text(String(campaign.brand.prefix(1))).font(.system(size: size * 0.4, weight: .semibold))
+      }
+    }.frame(width: size, height: size).clipShape(Circle()).accessibilityHidden(true)
+  }
+}
+struct CampaignHero: View {
+  let campaign: Campaign
+  var body: some View {
+    Group {
+      if LocalExperience.active {
+        Image("BrilloHero").resizable().scaledToFill()
+      } else if let source = campaign.branding?.hero_url, let url = URL(string: source),
+        url.scheme == "https"
+      {
+        AsyncImage(url: url) { image in
+          image.resizable().scaledToFill()
+        } placeholder: {
+          campaign.brandSurface.overlay(Image(systemName: "shippingbox").font(.largeTitle))
+        }
+      } else {
+        campaign.brandSurface.overlay(CampaignAvatar(campaign: campaign, size: 100))
+      }
+    }.frame(height: 190).frame(maxWidth: .infinity).clipped().clipShape(
+      RoundedRectangle(cornerRadius: 24)
     )
-    .padding(.horizontal, 20).frame(minHeight: 52).frame(maxWidth: .infinity)
-    .foregroundStyle(enabled ? Color.black : Color.secondary)
-    .background(
-      enabled ? HuntStyle.electric : Color(.tertiarySystemFill), in: Capsule()
-    )
-    .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
-    .animation(
-      reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75),
-      value: configuration.isPressed)
+    .accessibilityLabel("Kampanjbild för \(campaign.brand)")
+  }
+}
+struct AccountView: View {
+  @ObservedObject var session: Session
+  @State private var user: User?
+  @State private var showGuide = false
+  @State private var showLogin = false
+  @State private var confirmReset = false
+  @State private var error: String?
+  #if DEBUG || FIELD_TESTING
+    @ObservedObject private var test = SimulatorStore.shared
+  #endif
+  var body: some View {
+    NavigationStack {
+      List {
+        Section {
+          VStack(spacing: 12) {
+            Image(systemName: "person.crop.circle.fill").font(.system(size: 88)).foregroundStyle(
+              Color(white: 0.72))
+            Text(LocalExperience.active ? "Ditt testkonto" : user?.name ?? "Ditt konto").font(
+              .title.bold())
+            Text(
+              LocalExperience.active
+                ? "Brillo Pizza · Odenplan" : user?.email ?? "Spara dina fynd och kuponger"
+            ).foregroundStyle(.secondary)
+          }.frame(maxWidth: .infinity).padding(.vertical, 20)
+        }.listRowBackground(Color.clear)
+        if !LocalExperience.active && !session.loggedIn {
+          Section { Button("Logga in eller skapa konto") { showLogin = true } }
+        }
+        Section {
+          Button {
+            showGuide = true
+          } label: {
+            Label("Så fungerar Vouchhunter", systemImage: "questionmark.circle")
+          }
+          Button {
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+              UIApplication.shared.open(url)
+            }
+          } label: {
+            Label("Plats och kamera", systemImage: "location")
+          }
+        }
+        #if DEBUG || FIELD_TESTING
+          if LocalExperience.active {
+            Section("Testa resan") {
+              Label(
+                LocalExperience.fieldTest ? "Riktig GPS och kamera" : "Simulerad insamling",
+                systemImage: "viewfinder")
+              Button("Börja om jakten") { confirmReset = true }
+              Button("Testa utgången reservation") { test.expire() }
+              if test.voucher != nil && !test.redeemed {
+                Button("Testa inlöst kupong") { test.redeem() }
+              }
+            }
+            Section {
+              Text(
+                LocalExperience.fieldTest
+                  ? "Fälttestet sparar dina fynd på den här telefonen. Gå till Odenplan för att hitta pizzan. Testkupongen är inte ett riktigt erbjudande från Brillo Pizza."
+                  : "Öppna Brillo Pizza under Upptäck och prova resan till kupongen. Kamera och GPS simuleras här."
+              ).font(.footnote).foregroundStyle(.secondary)
+            }
+          }
+        #endif
+        if !LocalExperience.active && session.loggedIn {
+          Section {
+            Button("Logga ut", role: .destructive) {
+              Task {
+                await session.logout()
+                user = nil
+              }
+            }
+          }
+        }
+        if let error { Section { Text(error).font(.footnote).foregroundStyle(.secondary) } }
+      }.navigationTitle("Konto").navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showGuide) { JourneyGuide().vouchhunterTheme() }
+        .sheet(isPresented: $showLogin) { LoginView(session: session).vouchhunterTheme() }
+        .onChange(of: session.loggedIn) { _, value in
+          if value {
+            showLogin = false
+            Task { await load() }
+          }
+        }
+        .confirmationDialog(
+          "Börja om testjakten?", isPresented: $confirmReset, titleVisibility: .visible
+        ) {
+          #if DEBUG || FIELD_TESTING
+            Button("Börja om", role: .destructive) { test.reset() }
+          #endif
+          Button("Avbryt", role: .cancel) {}
+        } message: {
+          Text("Dina lokala testfynd och testkupongen återställs. Riktiga kampanjer påverkas inte.")
+        }
+        .task { await load() }
+    }
+  }
+  private func load() async {
+    guard session.loggedIn && !LocalExperience.active else { return }
+    do {
+      user = try await API.shared.request("/me")
+      error = nil
+    } catch { self.error = error.localizedDescription }
   }
 }
 struct LoginView: View {
@@ -141,7 +298,7 @@ struct LoginView: View {
           VStack(alignment: .leading, spacing: 14) {
             Image(systemName: "location.circle.fill").font(.largeTitle).foregroundStyle(
               Brand.accent)
-            Text("UT OCH HITTA DITT NÄSTA FYND.").font(.system(.title, design: .monospaced))
+            Text("Ditt nästa fynd väntar.").font(.system(.title, design: .default))
             Text("Hitta kampanjer, samla föremål och få din belöning.").foregroundStyle(.secondary)
           }.padding(.vertical, 12)
         }
@@ -173,7 +330,7 @@ struct LoginView: View {
           }.frame(maxWidth: .infinity)
         }.listRowBackground(Color.clear)
       }.scrollContentBackground(.hidden).background(HuntStyle.canvas)
-        .navigationTitle("VOUCHHUNTER").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Vouchhunter").navigationBarTitleDisplayMode(.inline)
     }
   }
   private func submit() async {
@@ -189,86 +346,85 @@ struct LoginView: View {
   }
 }
 struct ExploreView: View {
-  @StateObject private var location = LocationService()
   @State private var campaigns: [Campaign] = []
   @State private var error: String?
   @State private var loading = true
+  @State private var query = ""
+  @State private var showGuide = false
+  private var filtered: [Campaign] {
+    campaigns.filter {
+      query.isEmpty
+        || ($0.brand + " " + $0.title + " " + $0.reward).localizedCaseInsensitiveContains(query)
+    }
+  }
   var body: some View {
     NavigationStack {
       List {
-        Section {
-          Map(
-            initialPosition: .camera(
-              MapCamera(
-                centerCoordinate: CLLocationCoordinate2D(latitude: 59.3326, longitude: 18.0649),
-                distance: 2400, heading: 20, pitch: 48))
-          ) {
-            UserAnnotation()
-            ForEach(campaigns) { c in
-              ForEach(c.stops) { s in
-                Annotation(s.name, coordinate: .init(latitude: s.lat, longitude: s.lon)) {
-                  NavigationLink {
-                    HuntView(campaign: c)
-                  } label: {
-                    Image(systemName: "cube").font(.title2).padding(12).background(
-                      HuntStyle.surface, in: RoundedRectangle(cornerRadius: 12)
-                    ).foregroundStyle(HuntStyle.electric)
-                  }
+        if LocalExperience.active {
+          Section {
+            Label("Exempelkampanj · Odenplan", systemImage: "testtube.2")
+              .font(.footnote).foregroundStyle(.secondary)
+          }.listRowSeparator(.hidden)
+        }
+        if loading {
+          ProgressView("Hämtar kampanjer…").frame(maxWidth: .infinity).listRowSeparator(.hidden)
+        }
+        if let error {
+          ContentUnavailableView {
+            Label("Kunde inte hämta kampanjer", systemImage: "wifi.exclamationmark")
+          } description: {
+            Text(error)
+          } actions: {
+            Button("Försök igen") { Task { await load() } }.buttonStyle(HuntSecondaryButton())
+          }.listRowSeparator(.hidden)
+        } else if !loading && filtered.isEmpty {
+          ContentUnavailableView(
+            query.isEmpty ? "Inga jakter just nu" : "Ingen träff", systemImage: "map",
+            description: Text(
+              query.isEmpty
+                ? "Nya kampanjer visas här när de öppnar. Dra nedåt för att uppdatera."
+                : "Prova ett annat namn eller erbjudande.")
+          )
+          .listRowSeparator(.hidden)
+        }
+        ForEach(filtered) { campaign in
+          NavigationLink {
+            CampaignOverviewView(campaign: campaign)
+          } label: {
+            HStack(alignment: .center, spacing: 14) {
+              CampaignAvatar(campaign: campaign)
+              VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline) {
+                  Text(campaign.brand).font(.headline)
+                  Spacer(minLength: 8)
+                  Text("\(campaign.target) fynd").font(.caption).foregroundStyle(.secondary)
                 }
+                Text(campaign.title).font(.subheadline).foregroundStyle(.secondary)
+                Text(campaign.reward).font(.subheadline).lineLimit(2)
               }
-            }
-          }.mapStyle(
-            .standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll)
-          ).frame(height: 300).mapControls {
-            MapUserLocationButton()
-            MapCompass()
-          }
-        }.listRowInsets(EdgeInsets())
-        Section("Kampanjer att upptäcka") {
-          if loading { ProgressView("Hämtar kampanjer…") }
-          if let error {
-            ContentUnavailableView {
-              Label("Kunde inte hämta kampanjer", systemImage: "wifi.exclamationmark")
-            } description: {
-              Text(error)
-            } actions: {
-              Button("Försök igen") { Task { await load() } }
-            }
-          }
-          if !loading && error == nil && campaigns.isEmpty {
-            ContentUnavailableView(
-              "Nästa äventyr är på väg", systemImage: "map",
-              description: Text("Öppna kampanjer visas här när de publiceras."))
-          }
-          ForEach(campaigns) { c in
-            NavigationLink {
-              HuntView(campaign: c)
+            }.padding(.vertical, 8)
+          }.listRowSeparatorTint(HuntStyle.line)
+        }
+      }.listStyle(.plain).background(HuntStyle.surface)
+        .navigationTitle("Upptäck").navigationBarTitleDisplayMode(.large)
+        .searchable(text: $query, prompt: "Sök kampanj eller företag")
+        .toolbar {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button {
+              showGuide = true
             } label: {
-              VStack(alignment: .leading, spacing: 8) {
-                Text(c.brand).font(.subheadline).foregroundStyle(.secondary)
-                Text(c.title.uppercased()).font(.system(.title3, design: .monospaced))
-                Label(c.reward, systemImage: "ticket").font(.subheadline)
-                Text("\(c.target) objekt · \(c.stops.count) platser").font(.footnote)
-                  .foregroundStyle(.secondary)
-              }.padding(.vertical, 8)
+              Image(systemName: "questionmark")
             }
+            .accessibilityLabel("Så fungerar Vouchhunter")
           }
         }
-        if let message = location.message {
-          Section { Text(message).font(.footnote).foregroundStyle(.secondary) }
-        }
-      }.listStyle(.plain).scrollContentBackground(.hidden).background(HuntStyle.canvas)
-        .navigationTitle("UPPTÄCK").navigationBarTitleDisplayMode(.inline).refreshable {
-          await load()
-        }.task {
-          if !SimulatorMode.active { location.start() }
-          await load()
-        }.onDisappear { location.stop() }
+        .refreshable { await load() }.task { await load() }
+        .sheet(isPresented: $showGuide) { JourneyGuide().vouchhunterTheme() }
     }
   }
   private func load() async {
-    #if DEBUG && targetEnvironment(simulator)
-      if SimulatorMode.active {
+    #if DEBUG || FIELD_TESTING
+      if LocalExperience.active {
         campaigns = [SimulatorHunt.campaign]
         loading = false
         return
@@ -283,10 +439,111 @@ struct ExploreView: View {
     } catch { self.error = error.localizedDescription }
   }
 }
-/// One static 3D scene on the map. The active campaign uses its uploaded USDZ.
+struct JourneyGuide: View {
+  @Environment(\.dismiss) private var dismiss
+  var body: some View {
+    NavigationStack {
+      List {
+        Section {
+          Label("Välj en kampanj och läs erbjudandet.", systemImage: "ticket")
+          Label("Gå till ett föremål på kartan.", systemImage: "figure.walk")
+          Label("Öppna kameran och samla i AR.", systemImage: "viewfinder")
+          Label("Din kupong sparas när jakten är klar.", systemImage: "checkmark.circle")
+        }
+        Section {
+          Text(
+            "Platsåtkomst behövs under jakten. Kameran används först när du öppnar ett föremål. Håll uppsikt över trafiken och stanna när du använder kameran."
+          ).foregroundStyle(.secondary)
+        }
+      }.navigationTitle("Så fungerar det").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Klart") { dismiss() } } }
+    }
+  }
+}
+struct CampaignOverviewView: View {
+  let campaign: Campaign
+  @EnvironmentObject private var session: Session
+  @State private var showLogin = false
+  @State private var openHunt = false
+  var body: some View {
+    ScrollView {
+      VStack(spacing: 24) {
+        VStack(spacing: 12) {
+          CampaignAvatar(campaign: campaign, size: 112)
+          Text(campaign.brand).font(.largeTitle.bold())
+          Text(campaign.title).font(.body).foregroundStyle(.secondary)
+          if LocalExperience.active {
+            Text("Exempelkampanj").font(.caption).padding(.horizontal, 12).padding(.vertical, 5)
+              .background(HuntStyle.mint, in: Capsule())
+          }
+        }.padding(.top, 20)
+        CampaignHero(campaign: campaign)
+        VStack(alignment: .leading, spacing: 12) {
+          Label(campaign.reward, systemImage: "ticket").font(.title3.weight(.semibold))
+          Text(campaign.description).foregroundStyle(.secondary)
+        }.huntPanel()
+        VStack(spacing: 0) {
+          overviewRow("Samla", value: "\(campaign.target) föremål", icon: "shippingbox")
+          Divider().padding(.leading, 40)
+          overviewRow(
+            "Område",
+            value: SimulatorMode.active ? "Odenplan" : (campaign.stops.first?.name ?? "Se kartan"),
+            icon: "mappin.and.ellipse")
+          Divider().padding(.leading, 40)
+          overviewRow("Tid när du startar", value: "Upp till 60 min", icon: "clock")
+        }.huntPanel()
+        VStack(alignment: .leading, spacing: 10) {
+          Text("Bra att veta").font(.headline)
+          Text(campaign.terms).foregroundStyle(.secondary)
+          Text(
+            LocalExperience.active
+              ? "Testkupongen sparas på den här enheten och kan inte lösas in hos Brillo Pizza."
+              : "Lös in hos \(campaign.venue). Gäller i \(campaign.voucher_days) dagar efter slutförd jakt."
+          ).font(.footnote).foregroundStyle(.secondary)
+        }.huntPanel()
+      }.padding(16)
+    }.background(HuntStyle.canvas)
+      .navigationTitle("Om kampanjen").navigationBarTitleDisplayMode(.inline)
+      .safeAreaInset(edge: .bottom) {
+        Button {
+          if LocalExperience.active || session.loggedIn {
+            openHunt = true
+          } else {
+            showLogin = true
+          }
+        } label: {
+          Text("Öppna jakten")
+        }
+        .buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
+        .padding(16).background(HuntStyle.canvas)
+      }
+      .navigationDestination(isPresented: $openHunt) { HuntView(campaign: campaign) }
+      .sheet(isPresented: $showLogin) {
+        LoginView(session: session).vouchhunterTheme().overlay(alignment: .topTrailing) {
+          Button("Stäng") { showLogin = false }.padding()
+        }
+      }
+      .onChange(of: session.loggedIn) { _, loggedIn in
+        if loggedIn && showLogin {
+          showLogin = false
+          openHunt = true
+        }
+      }
+  }
+  private func overviewRow(_ title: String, value: String, icon: String) -> some View {
+    HStack(spacing: 14) {
+      Image(systemName: icon).frame(width: 24)
+      Text(title)
+      Spacer(minLength: 10)
+      Text(value).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+    }.padding(.vertical, 13)
+  }
+}
+/// A collectible scene on the map. The active campaign uses its uploaded USDZ.
 struct CollectibleMapObject: UIViewRepresentable {
   let url: URL?
   let pizzaPreview: Bool
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   func makeUIView(context: Context) -> SCNView {
     let view = SCNView()
     view.backgroundColor = .clear
@@ -327,7 +584,15 @@ struct CollectibleMapObject: UIViewRepresentable {
           -(minimum.z + maximum.z) * scale / 2)
       }
     }
+    object.name = "collectible"
     scene.rootNode.addChildNode(object)
+    let ring = SCNNode(geometry: SCNTorus(ringRadius: 0.78, pipeRadius: 0.012))
+    ring.name = "halo"
+    ring.geometry?.firstMaterial?.diffuse.contents = UIColor.white
+    ring.geometry?.firstMaterial?.emission.contents = UIColor(white: 0.85, alpha: 1)
+    ring.position.y = -0.18
+    scene.rootNode.addChildNode(ring)
+    if !reduceMotion { animate(object, ring) }
     let camera = SCNNode()
     camera.camera = SCNCamera()
     camera.position = SCNVector3(0, 2.3, 2.7)
@@ -339,12 +604,37 @@ struct CollectibleMapObject: UIViewRepresentable {
     view.pointOfView = camera
     return view
   }
-  func updateUIView(_ view: SCNView, context: Context) {}
+  private func animate(_ object: SCNNode, _ ring: SCNNode) {
+    object.runAction(
+      .repeatForever(
+        .sequence([
+          .moveBy(x: 0, y: 0.07, z: 0, duration: 1.4), .moveBy(x: 0, y: -0.07, z: 0, duration: 1.4),
+        ])), forKey: "float")
+    ring.runAction(
+      .repeatForever(
+        .sequence([
+          .group([.scale(to: 1.1, duration: 1), .fadeOpacity(to: 0.35, duration: 1)]),
+          .group([.scale(to: 1, duration: 1), .fadeOpacity(to: 1, duration: 1)]),
+        ])), forKey: "pulse")
+  }
+  func updateUIView(_ view: SCNView, context: Context) {
+    guard let object = view.scene?.rootNode.childNode(withName: "collectible", recursively: false),
+      let ring = view.scene?.rootNode.childNode(withName: "halo", recursively: false)
+    else { return }
+    if reduceMotion {
+      object.removeAllActions()
+      ring.removeAllActions()
+      ring.scale = SCNVector3(1, 1, 1)
+      ring.opacity = 1
+    } else if object.action(forKey: "float") == nil {
+      animate(object, ring)
+    }
+  }
 }
 struct HuntView: View {
   let campaign: Campaign
   private var isPreview: Bool { SimulatorMode.active }
-  #if DEBUG && targetEnvironment(simulator)
+  #if DEBUG || FIELD_TESTING
     @ObservedObject private var simulator = SimulatorStore.shared
   #endif
   @StateObject private var location = LocationService()
@@ -363,7 +653,9 @@ struct HuntView: View {
     let available = orderedStops.filter { hunt?.collected.contains($0.id) != true }
     return available.first { $0.id == focusedStopID } ?? available.first
   }
-  private var objectName: String { isPreview ? "Pizza" : campaign.model?.name ?? "Föremål" }
+  private var objectName: String {
+    LocalExperience.active ? "Pizza" : campaign.model?.name ?? "Föremål"
+  }
   private func focusNext() {
     guard let next = nextStop else { return }
     mapPosition = .camera(
@@ -375,7 +667,7 @@ struct HuntView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         Text(campaign.brand).font(.subheadline).foregroundStyle(.secondary)
-        Text(campaign.title.uppercased()).font(.system(.title, design: .monospaced))
+        Text(campaign.title).font(.system(.title, design: .default))
         HuntRule()
         Text(campaign.description).foregroundStyle(.secondary)
         Label(
@@ -384,8 +676,8 @@ struct HuntView: View {
         )
         .font(.subheadline).foregroundStyle(.secondary)
         VStack(alignment: .leading, spacing: 12) {
-          Text("BELÖNING").font(.caption).foregroundStyle(.secondary)
-          Text(campaign.reward.uppercased()).font(.system(.title2, design: .monospaced))
+          Text("Belöning").font(.caption).foregroundStyle(.secondary)
+          Text(campaign.reward).font(.system(.title2, design: .default))
           Text("Samla \(campaign.target) objekt för att få din belöning.")
           if let hunt {
             ProgressView(value: Double(hunt.collected.count), total: Double(campaign.target))
@@ -396,15 +688,17 @@ struct HuntView: View {
           Label("Du är klar! Din voucher finns i plånboken.", systemImage: "checkmark.seal.fill")
             .foregroundStyle(HuntStyle.green)
           Button("Visa min voucher", systemImage: "qrcode") { showWallet = true }
-            .buttonStyle(HuntPillButton())
+            .buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
         } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
           Text(
             "En belöning reserveras i upp till 60 minuter, senast till kampanjens slut. Du behöver vara vid platserna för att samla."
           ).font(.footnote).foregroundStyle(.secondary)
-          Button("Starta jakten") { Task { await start() } }.buttonStyle(HuntPillButton())
-            .disabled(
-              busy || campaign.ends <= clock.timeIntervalSince1970
-                || campaign.starts > clock.timeIntervalSince1970)
+          Button("Starta jakten") { Task { await start() } }.buttonStyle(
+            HuntPillButton(fill: campaign.accent, ink: campaign.accentText)
+          )
+          .disabled(
+            busy || campaign.ends <= clock.timeIntervalSince1970
+              || campaign.starts > clock.timeIntervalSince1970)
         } else if let hunt {
           Text(
             "Reserverad till \(Date(timeIntervalSince1970:hunt.expires).formatted(date:.omitted,time:.shortened))"
@@ -420,7 +714,7 @@ struct HuntView: View {
           .standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll)
         ).frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 16))
         HuntRule()
-        Text("PLATSER ATT UPPTÄCKA").font(.system(.title3, design: .monospaced))
+        Text("Platser i jakten").font(.system(.title3, design: .default))
         ForEach(orderedStops) { s in
           HStack {
             VStack(alignment: .leading) {
@@ -473,7 +767,9 @@ struct HuntView: View {
               } label: {
                 VStack(spacing: 0) {
                   if isPreview || thumbnailURL != nil {
-                    CollectibleMapObject(url: thumbnailURL, pizzaPreview: isPreview).frame(
+                    CollectibleMapObject(
+                      url: thumbnailURL, pizzaPreview: isPreview && thumbnailURL == nil
+                    ).id(thumbnailURL).frame(
                       width: 112, height: 108
                     ).allowsHitTesting(false)
                   } else {
@@ -482,7 +778,7 @@ struct HuntView: View {
                     )
                     .padding(20).background(HuntStyle.surface, in: Circle())
                   }
-                  Text(objectName).font(.system(.subheadline, design: .monospaced, weight: .bold))
+                  Text(objectName).font(.system(.subheadline, design: .default, weight: .bold))
                     .foregroundStyle(.primary).padding(.horizontal, 14).padding(.vertical, 7)
                     .background(HuntStyle.surface, in: Capsule())
                 }
@@ -501,18 +797,18 @@ struct HuntView: View {
       }.mapStyle(
         .standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll)
       )
-      .mapControls {}.ignoresSafeArea(edges: .bottom)
+      .mapControls {}
       HStack {
         Button {
           showDetails = true
         } label: {
           HStack(spacing: 10) {
             Text("\(hunt?.collected.count ?? 0) / \(campaign.target)").font(
-              .system(.headline, design: .monospaced, weight: .bold))
-            Text("FYND").font(.subheadline).foregroundStyle(.secondary)
+              .system(.headline, design: .default, weight: .bold))
+            Text("fynd").font(.subheadline).foregroundStyle(.secondary)
           }.padding(.horizontal, 18).frame(height: 48)
-            .background(Color.black, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.55), lineWidth: 0.5))
+            .background(HuntStyle.surface, in: Capsule())
+
         }.buttonStyle(.plain).accessibilityLabel(
           "Din samling, \(hunt?.collected.count ?? 0) av \(campaign.target). Visa kampanjdetaljer")
         Spacer()
@@ -522,117 +818,83 @@ struct HuntView: View {
           Image(systemName: "scope").font(.title3).frame(width: 48, height: 48)
             .background(HuntStyle.surface, in: Circle())
         }.accessibilityLabel("Centrera nästa fynd")
-      }.foregroundStyle(.white).environment(\.colorScheme, .dark)
+      }.foregroundStyle(HuntStyle.accent)
         .padding(.horizontal, 20).padding(.top, 8)
     }
-    .safeAreaInset(edge: .bottom) {
-      VStack(alignment: .leading, spacing: 12) {
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      VStack(alignment: .leading, spacing: 16) {
+        Capsule().fill(Color.secondary.opacity(0.3)).frame(width: 36, height: 5)
+          .frame(maxWidth: .infinity).accessibilityHidden(true)
         if hunt?.completed != nil {
-          Label("Jakten är klar!", systemImage: "checkmark.seal.fill").font(.title2.bold())
-          Text(campaign.reward).font(.headline)
-          Button("Hämta din belöning", systemImage: "ticket.fill") { showWallet = true }
-            .buttonStyle(HuntPillButton())
+          Label("Alla fynd är samlade", systemImage: "checkmark.circle.fill").font(
+            .title3.weight(.semibold))
+          Text(campaign.reward).foregroundStyle(.secondary)
+          Button("Visa min kupong") { showWallet = true }.buttonStyle(
+            HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
         } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
-          Text(hunt == nil ? "Ditt nästa äventyr" : "Redo för en ny runda?").font(.title2.bold())
-          Text(
-            "Hitta \(campaign.target) föremål ute i staden. Samla dem i AR och lås upp \(campaign.reward.lowercased())."
-          )
-          .font(.subheadline)
+          Text(hunt == nil ? "Redo att börja?" : "Reservationen har gått ut").font(
+            .title3.weight(.semibold))
+          Text("Samla \(campaign.target) föremål och lås upp \(campaign.reward.lowercased()).")
+            .foregroundStyle(.secondary)
           Button {
             Task { await start() }
           } label: {
             HStack {
-              if busy { ProgressView() }
+              if busy { ProgressView().tint(.white) }
               Text("Starta jakten")
-              Image(systemName: "arrow.right")
             }
-            .frame(maxWidth: .infinity)
-          }.buttonStyle(HuntPillButton())
-            .disabled(
-              busy || campaign.ends <= clock.timeIntervalSince1970
-                || campaign.starts > clock.timeIntervalSince1970)
-          Text(
-            "Belöningen reserveras i upp till 60 minuter. Håll koll på trafiken och din omgivning."
-          )
-          .font(.caption).foregroundStyle(.secondary)
+          }.buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText)).disabled(
+            busy || campaign.ends <= clock.timeIntervalSince1970
+              || campaign.starts > clock.timeIntervalSince1970)
+          Text("Din belöning reserveras i upp till 60 minuter.").font(.footnote).foregroundStyle(
+            .secondary)
         } else if let next = nextStop {
-          HStack(spacing: 0) {
-            Group {
-              if isPreview || thumbnailURL != nil {
-                CollectibleMapObject(url: thumbnailURL, pizzaPreview: isPreview)
-                  .frame(width: 76, height: 84).allowsHitTesting(false)
-              } else {
-                Image(systemName: "cube").font(.system(size: 32, weight: .ultraLight))
-                  .frame(width: 76, height: 84)
-              }
-            }.padding(.horizontal, 8)
-            Rectangle().fill(.white.opacity(0.55)).frame(width: 0.5)
-            VStack(alignment: .leading, spacing: 16) {
-              HStack(alignment: .top) {
-                Text(objectName.uppercased()).frame(maxWidth: .infinity, alignment: .leading)
-                Button {
-                  showDetails = true
-                } label: {
-                  Text("VISA").underline()
-                }
-                .buttonStyle(.plain)
-              }
+          Button {
+            showDetails = true
+          } label: {
+            HStack(spacing: 12) {
+              CampaignAvatar(campaign: campaign, size: 48)
               VStack(alignment: .leading, spacing: 4) {
-                Text(next.name.uppercased())
-                if let loc = location.location {
-                  Text(
-                    "AVSTÅND: \(Int(loc.distance(from: CLLocation(latitude: next.lat, longitude: next.lon)))) M"
-                  )
-                } else if isPreview {
-                  Text("FÖRHANDSVISNING").font(.system(.caption, design: .monospaced))
-                } else {
-                  Text("SÖKER POSITION").font(.system(.caption, design: .monospaced))
-                }
+                Text(next.name).font(.headline)
+                Text(isPreview ? "Simulerad närhet · Odenplan" : collectionHint(next)).font(
+                  .subheadline
+                ).foregroundStyle(.secondary)
               }
-            }.padding(14)
-          }.fixedSize(horizontal: false, vertical: true)
-            .background(Color(white: 0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-              RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.65), lineWidth: 0.5))
-          VStack(spacing: 8) {
-            HStack {
-              Text("INSAMLAT")
-              Spacer()
-              Text("\(hunt?.collected.count ?? 0) / \(campaign.target)").monospacedDigit()
-            }
-            Rectangle().fill(.white.opacity(0.5)).frame(height: 0.5)
-            HStack(alignment: .top) {
-              Text("BELÖNING")
-              Spacer(minLength: 16)
-              Text(campaign.reward.uppercased()).multilineTextAlignment(.trailing)
-            }
-          }.padding(.vertical, 8)
+              Spacer(minLength: 4)
+              Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(
+                .secondary)
+            }.padding(14).background(HuntStyle.surface, in: RoundedRectangle(cornerRadius: 22))
+          }.buttonStyle(.plain)
+          HStack {
+            Text("\(hunt?.collected.count ?? 0) av \(campaign.target) insamlade").font(.subheadline)
+            Spacer()
+            Text(campaign.reward).font(.subheadline).foregroundStyle(.secondary)
+              .multilineTextAlignment(.trailing)
+          }
+          ProgressView(value: Double(hunt?.collected.count ?? 0), total: Double(campaign.target))
+            .tint(campaign.accent)
           if canCollect(next) || isPreview {
-            Button(isPreview ? "TESTA INSAMLING →" : "SAMLA FÖREMÅLET →") {
+            Button(isPreview ? "Prova att samla" : "Öppna kameran") {
               captureCount = hunt?.collected.count ?? 0
               selected = next
-            }.buttonStyle(HuntPillButton())
+            }.buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
           } else {
-            Button(isPreview ? "UTFORSKA JAKTEN →" : "VISA VÄGEN →") {
-              if isPreview { showDetails = true } else { directions(next) }
-            }.buttonStyle(HuntPillButton())
+            Button("Visa gångväg") { directions(next) }.buttonStyle(
+              HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
           }
         }
-        if !error.isEmpty { Text(error).font(.footnote).foregroundStyle(.red) }
-        if let message = location.message {
-          Text(message).font(.caption).foregroundStyle(.secondary)
+        if !error.isEmpty {
+          Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red)
         }
-      }.font(.system(.subheadline, design: .monospaced, weight: .regular))
-        .padding(20).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.black.ignoresSafeArea(edges: .bottom))
-        .overlay(alignment: .top) { Rectangle().fill(.white.opacity(0.55)).frame(height: 0.5) }
-        .foregroundStyle(.white).environment(\.colorScheme, .dark)
+        if let message = location.message {
+          Text(message).font(.footnote).foregroundStyle(.secondary)
+        }
+      }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 16)
+        .background(HuntStyle.canvas.ignoresSafeArea(edges: .bottom))
     }
-    .fontDesign(.monospaced)
-    .preferredColorScheme(.dark)
-    .tint(HuntStyle.green)
-    .navigationTitle(isPreview ? "Förhandsvisning" : "Jakten").navigationBarTitleDisplayMode(
+    .fontDesign(.default).preferredColorScheme(.light).tint(campaign.accent)
+    .navigationTitle(isPreview ? "Brillo Pizza · Test" : campaign.brand)
+    .navigationBarTitleDisplayMode(
       .inline
     )
     .sheet(isPresented: $showDetails) {
@@ -645,8 +907,9 @@ struct HuntView: View {
         .visible)
     }
     .task {
-      if isPreview {
-        #if DEBUG && targetEnvironment(simulator)
+      if LocalExperience.active {
+        #if DEBUG || FIELD_TESTING
+          if LocalExperience.fieldTest { location.start() }
           hunt = simulator.hunt
           focusNext()
         #endif
@@ -660,12 +923,16 @@ struct HuntView: View {
       } catch { self.error = error.localizedDescription }
     }
     .task {
-      guard !isPreview, let model = campaign.model else { return }
+      if LocalExperience.active {
+        thumbnailURL = LocalExperience.modelURL
+        return
+      }
+      guard let model = campaign.model else { return }
       thumbnailURL = try? await API.shared.modelFile(assetID: model.usdz_asset_id)
     }
-    #if DEBUG && targetEnvironment(simulator)
+    #if DEBUG || FIELD_TESTING
       .onReceive(simulator.$hunt) { value in
-        if isPreview {
+        if LocalExperience.active {
           hunt = value
           focusNext()
         }
@@ -691,7 +958,7 @@ struct HuntView: View {
         if hunt?.completed != nil { showWallet = true }
       }
     ) { s in
-      #if DEBUG && targetEnvironment(simulator)
+      #if DEBUG || FIELD_TESTING
         if isPreview {
           SimulatorCapture(stop: s).vouchhunterTheme()
         } else {
@@ -704,7 +971,9 @@ struct HuntView: View {
   }
   private func captureView(_ s: Stop) -> some View {
     CaptureView(
-      stop: s, model: campaign.model, collectedCount: captureCount, target: campaign.target
+      stop: s, model: campaign.model,
+      localModelURL: LocalExperience.fieldTest ? LocalExperience.modelURL : nil,
+      collectedCount: captureCount, target: campaign.target
     ) { try await collect(s) }.vouchhunterTheme()
   }
   private var orderedStops: [Stop] {
@@ -745,7 +1014,8 @@ struct HuntView: View {
   }
   private func canCollect(_ stop: Stop) -> Bool {
     guard !isPreview else { return false }
-    guard let hunt, hunt.completed == nil, hunt.expires > Date().timeIntervalSince1970,
+    guard let hunt, hunt.completed == nil, !hunt.collected.contains(stop.id),
+      hunt.expires > Date().timeIntervalSince1970,
       let loc = location.location, loc.horizontalAccuracy >= 0, loc.horizontalAccuracy <= 35,
       abs(loc.timestamp.timeIntervalSinceNow) < 45
     else { return false }
@@ -753,8 +1023,8 @@ struct HuntView: View {
       <= Double(stop.radius)
   }
   private func start() async {
-    if isPreview {
-      #if DEBUG && targetEnvironment(simulator)
+    if LocalExperience.active {
+      #if DEBUG || FIELD_TESTING
         simulator.start()
         hunt = simulator.hunt
       #endif
@@ -769,6 +1039,16 @@ struct HuntView: View {
   }
   private func collect(_ stop: Stop) async throws {
     guard !isPreview else { return }
+    #if DEBUG || FIELD_TESTING
+      if LocalExperience.fieldTest {
+        guard canCollect(stop) else {
+          throw APIError.message("Gå närmare föremålet och vänta på en noggrann position.")
+        }
+        simulator.collect(stop.id)
+        hunt = simulator.hunt
+        return
+      }
+    #endif
     location.start()
     var payload = try location.payload()
     payload["stop_id"] = stop.id
@@ -776,32 +1056,38 @@ struct HuntView: View {
   }
 }
 
-#if DEBUG && targetEnvironment(simulator)
+#if DEBUG || FIELD_TESTING
   /// Offline visual fixture. Never published, paid, or granted backend privileges.
   enum SimulatorHunt {
     static let campaign: Campaign = {
       let coordinates: [(String, Double, Double)] = [
-        ("Sergels torg", 59.3326, 18.0649), ("Kulturhuset", 59.3321, 18.0645),
-        ("Brunkebergstorg", 59.3309, 18.0663), ("Kungsträdgården", 59.3312, 18.0717),
-        ("Hötorget", 59.3354, 18.0631), ("Berzelii park", 59.3326, 18.0740),
-        ("Norrmalmstorg", 59.3330, 18.0730), ("Gustav Adolfs torg", 59.3294, 18.0700),
-        ("Norra Bantorget", 59.3350, 18.0570), ("Strömparterren", 59.3280, 18.0707),
+        ("Odenplan", 59.3428, 18.0497), ("Odenplan · fynd 2", 59.3429, 18.0498),
+        ("Odenplan · fynd 3", 59.3430, 18.0499), ("Odenplan · fynd 4", 59.3427, 18.0498),
+        ("Odenplan · fynd 5", 59.3428, 18.0500), ("Odenplan · fynd 6", 59.3429, 18.0501),
+        ("Odenplan · fynd 7", 59.3427, 18.0500), ("Odenplan · fynd 8", 59.3426, 18.0500),
+        ("Odenplan · fynd 9", 59.3428, 18.0502), ("Odenplan · fynd 10", 59.3429, 18.0503),
       ]
       let payload: [String: Any] = [
-        "id": "simulator-preview", "title": "Den stora pizzajakten",
-        "brand": "Vouchhunter · Exempelkampanj",
+        "id": "simulator-preview", "title": "Upptäck vår nya pizza",
+        "brand": "Brillo Pizza",
+        "branding": ["accent_color": "#FF113A", "background_color": "#FFF5EB"],
         "description":
-          "Tio pizzor har dykt upp i city. Upptäck platserna, samla dina fynd och nå hela vägen till belöningen.",
+          (LocalExperience.fieldTest
+          ? "Brillo Pizza lanserar en ny pizza i den här exempelkampanjen. Hitta pizzan vid Odenplan, samla den i AR och lås upp en testkupong."
+          : "Brillo Pizza lanserar en ny pizza i den här exempelkampanjen. Hitta tio pizzor vid Odenplan och samla dem för att låsa upp en testkupong."),
         "reward": "En nybakad pizza",
-        "terms": "Lokal designförhandsvisning. Ingen riktig kampanj eller giltig voucher.",
-        "venue": "Exempelpizzerian", "target": 10, "capacity": 100, "voucher_days": 14,
+        "terms": "Lokal testjakt. Ingen riktig kampanj eller giltig voucher.",
+        "venue": "Brillo Pizza · Exempel", "target": LocalExperience.fieldTest ? 1 : 10,
+        "capacity": 100, "voucher_days": 1,
         "starts": Date().timeIntervalSince1970 - 60, "ends": Date().timeIntervalSince1970 + 86400,
-        "stops": coordinates.enumerated().map { i, item in
-          [
-            "id": "preview-\(i)", "campaign_id": "simulator-preview", "name": item.0, "lat": item.1,
-            "lon": item.2, "radius": 40,
-          ] as [String: Any]
-        },
+        "stops": (LocalExperience.fieldTest ? Array(coordinates.prefix(1)) : coordinates)
+          .enumerated().map { i, item in
+            [
+              "id": "preview-\(i)", "campaign_id": "simulator-preview", "name": item.0,
+              "lat": item.1,
+              "lon": item.2, "radius": 50,
+            ] as [String: Any]
+          },
       ]
       return try! JSONDecoder().decode(
         Campaign.self, from: JSONSerialization.data(withJSONObject: payload))
@@ -826,17 +1112,48 @@ enum SimulatorMode {
     #endif
   }
 }
+enum LocalExperience {
+  static var fieldTest: Bool {
+    #if FIELD_TESTING
+      true
+    #elseif DEBUG
+      ProcessInfo.processInfo.arguments.contains("--field-test")
+    #else
+      false
+    #endif
+  }
+  static var active: Bool { SimulatorMode.active || fieldTest }
+  static var modelURL: URL? { Bundle.main.url(forResource: "brillo-pizza", withExtension: "usdz") }
+}
 
-#if DEBUG && targetEnvironment(simulator)
+#if DEBUG || FIELD_TESTING
   @MainActor final class SimulatorStore: ObservableObject {
     static let shared = SimulatorStore()
-    @Published private(set) var hunt: Hunt? = SimulatorHunt.hunt
+    @Published private(set) var hunt: Hunt?
+    init() {
+      if LocalExperience.fieldTest,
+        let data = UserDefaults.standard.data(forKey: "vouchhunter.field-hunt.v1")
+      {
+        hunt = try? JSONDecoder().decode(Hunt.self, from: data)
+        redeemed = hunt?.voucher?.redeemed != nil
+      }
+    }
+    private func persist() {
+      guard LocalExperience.fieldTest else { return }
+      UserDefaults.standard.set(
+        try? JSONEncoder().encode(hunt), forKey: "vouchhunter.field-hunt.v1")
+    }
     @Published private(set) var redeemed = false
     var voucher: Voucher? { hunt?.voucher }
-    func start() { update(ids: []) }
+    func start() {
+      redeemed = false
+      hunt = nil
+      update(ids: [])
+    }
     func reset() {
       redeemed = false
       hunt = nil
+      persist()
     }
     func expire() { update(ids: hunt?.collected ?? [], expired: true) }
     func redeem() {
@@ -845,22 +1162,26 @@ enum SimulatorMode {
     }
     func collect(_ id: String) {
       guard let hunt, hunt.completed == nil, hunt.expires > Date().timeIntervalSince1970,
-        !hunt.collected.contains(id)
+        !hunt.collected.contains(id), SimulatorHunt.campaign.stops.contains(where: { $0.id == id })
       else { return }
       update(ids: hunt.collected + [id])
     }
     private func update(ids: [String], expired: Bool = false) {
       let complete = ids.count >= SimulatorHunt.campaign.target
       var payload: [String: Any] = [
-        "id": "preview-hunt", "expires": Date().timeIntervalSince1970 + (expired ? -1 : 3600),
+        "id": "preview-hunt",
+        "expires": expired
+          ? Date().timeIntervalSince1970 - 1
+          : (hunt?.expires ?? Date().timeIntervalSince1970 + 3600),
         "collected": ids,
       ]
       if complete {
-        payload["completed"] = Date().timeIntervalSince1970
+        payload["completed"] = hunt?.completed ?? Date().timeIntervalSince1970
         var voucher: [String: Any] = [
           "id": "local-test-voucher", "code": "SIMULATOR-NOT-REDEEMABLE",
-          "expires": Date().timeIntervalSince1970 + 86400, "title": "Den stora pizzajakten",
-          "reward": "En nybakad pizza", "venue": "Exempelpizzerian",
+          "expires": hunt?.voucher?.expires ?? Date().timeIntervalSince1970 + 86400,
+          "title": "Upptäck vår nya pizza",
+          "reward": "En nybakad pizza", "venue": "Brillo Pizza · Exempel",
           "terms": "TESTKUPONG. Kan inte lösas in hos ett företag.",
         ]
         if redeemed { voucher["redeemed"] = Date().timeIntervalSince1970 }
@@ -868,42 +1189,17 @@ enum SimulatorMode {
       }
       hunt = try! JSONDecoder().decode(
         Hunt.self, from: JSONSerialization.data(withJSONObject: payload))
+      persist()
     }
   }
   struct SimulatorExperience: View {
-    @ObservedObject private var store = SimulatorStore.shared
+    @StateObject private var session = Session()
     var body: some View {
       TabView {
-        NavigationStack { HuntView(campaign: SimulatorHunt.campaign) }
-          .tabItem { Label("Jakten", systemImage: "map") }
-        ExploreView().tabItem { Label("Upptäck", systemImage: "square.grid.2x2") }
+        ExploreView().tabItem { Label("Upptäck", systemImage: "map") }
         WalletView().tabItem { Label("Kuponger", systemImage: "ticket") }
-        NavigationStack {
-          ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-              Text("DIN TESTVÄRLD").font(.system(.title, design: .monospaced))
-              Text(
-                "Testa med lokal data. Inga riktiga kampanjer, betalningar eller kuponger påverkas."
-              ).foregroundStyle(.secondary)
-              HuntRule()
-              Text(
-                "Gå till Jakten, välj ett föremål och tryck på Testa insamling. Efter tio fynd visas testkupongen under Kuponger."
-              )
-              Button("Börja om från noll") { store.reset() }.buttonStyle(HuntPillButton())
-              Button("Testa utgången reservation") { store.expire() }.buttonStyle(
-                HuntSecondaryButton())
-              if store.voucher != nil && !store.redeemed {
-                Button("Markera testkupong som inlöst") { store.redeem() }.buttonStyle(
-                  HuntSecondaryButton())
-              }
-              HuntRule()
-              Text(
-                "Kamera, fysisk AR-placering och riktig GPS-närhet behöver testas på en iPhone. Här kan du bedöma navigation, formgivning och progression."
-              ).font(.footnote).foregroundStyle(.secondary)
-            }.padding(20)
-          }.navigationTitle("SIMULATOR").navigationBarTitleDisplayMode(.inline)
-        }.tabItem { Label("Testläge", systemImage: "slider.horizontal.3") }
-      }
+        AccountView(session: session).tabItem { Label("Konto", systemImage: "person.crop.circle") }
+      }.environmentObject(session)
     }
   }
   struct SimulatorCapture: View {
@@ -914,7 +1210,7 @@ enum SimulatorMode {
     var body: some View {
       VStack(spacing: 24) {
         HStack {
-          Text("SIMULERAT MÖTE").font(.subheadline)
+          Text("Simulerat möte").font(.subheadline)
           Spacer()
           Button {
             dismiss()
@@ -924,23 +1220,25 @@ enum SimulatorMode {
           .buttonStyle(HuntSecondaryButton()).accessibilityLabel("Stäng mötet")
         }
         HuntRule()
-        Text(stop.name.uppercased()).font(.system(.title2, design: .monospaced))
+        Text(stop.name).font(.system(.title2, design: .default))
         Spacer()
         Button {
           collect()
         } label: {
-          CollectibleMapObject(url: nil, pizzaPreview: true).frame(height: 250)
-            .opacity(collected ? 0.25 : 1)
+          CollectibleMapObject(url: LocalExperience.modelURL, pizzaPreview: false).frame(
+            height: 250
+          )
+          .opacity(collected ? 0.25 : 1)
         }.buttonStyle(.plain).disabled(collected).accessibilityLabel("Samla pizzan")
-        Text(collected ? "FYND INSAMLAT" : "DÄR ÄR DITT FYND").font(
-          .system(.title2, design: .monospaced))
+        Text(collected ? "Fynd insamlat" : "Där är ditt fynd").font(
+          .system(.title2, design: .default))
         Text("\(store.hunt?.collected.count ?? 0) / 10").foregroundStyle(HuntStyle.electric)
         Spacer()
         Text("Lokal simulering utan kamera eller GPS.").font(.footnote).foregroundStyle(.secondary)
         Button(
           collected
-            ? (store.voucher != nil ? "VISA TESTKUPONGEN →" : "FORTSÄTT JAKTEN →")
-            : "SAMLA FÖREMÅLET →"
+            ? (store.voucher != nil ? "Visa testkupongen" : "Fortsätt jakten")
+            : "Samla föremålet"
         ) {
           if collected { dismiss() } else { collect() }
         }.buttonStyle(HuntPillButton())

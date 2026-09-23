@@ -2,6 +2,22 @@
 
 Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och inte lanseringsklart.
 
+## Senaste verifierade läge – Brillo / Odenplan
+
+Börja med [guiden för morgondagens telefonprov](STARTA-HAR-ODENPLAN.md).
+
+- Aktuell design är WhatsApp-inspirerad, ljus och neutral. Äldre designavsnitt nedan beskriver historik.
+- Brillo-kampanjen har logotyp, foto, egen röd accent och tydligt markerad testbelöning.
+- Resan Upptäck → kampanj → karta → tio simulerade insamlingar → testkupong har klickats igenom i simulatorn.
+- Originalgenererad USDZ-pizza visas korrekt i SceneKit. Svävning, pulserande ring och minskad-rörelse-hantering finns i kart-/AR-koden. Verklig RealityKit-visning är ännu inte testad på telefon.
+- Separat schema **Vouchhunter Field Test**, eget app-id `se.vouchhunter.app.fieldtest`, en pizza vid Odenplan, riktig GPS-/AR-kod och lokalt sparad jakt/kupong. Produktionsschemat aktiverar inte detta läge.
+- Debug-simulator, FieldTest för simulator och osignerat iPhone-bygge samt normal Release för iPhone kompilerar. 27 backendtester och 3 Swift-tester passerar. JavaScript-syntaxkontroll passerar.
+- Kundens kampanjbranding kan sparas på egna obetalda utkast. Servervalidering och behörighets-/betalningslås testade. Visuell granskning av den nya webbredigeraren återstår.
+- Android har neutral grundpalett och systemtypografi, men full visuell och funktionell likvärdighet med det nya iOS-flödet återstår.
+- **Blockerat för installation/distribution:** ingen giltig Apple-signeringsidentitet eller valt utvecklarteam i projektet; iPhone 16e är ännu inte ansluten. Inget TestFlight-bygge har laddats upp.
+- Detta är ännu inte produktionsklart. Skarp backend, betalningar, butikspublicering och fysisk AR-/GPS-verifiering återstår.
+
+
 ## Implementerat
 - Separat kunddashboard för kampanjöversikt, resultat, betalningar och briefbeställningar.
 - Separat adminvy/API för kundförfrågningar, kampanjkonfiguration och publicering.

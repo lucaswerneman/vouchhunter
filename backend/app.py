@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlencode
 from urllib.request import Request, urlopen
 from backend.assets import validate_model
+from backend.branding import validate_branding
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -159,6 +160,7 @@ class Store:
         ).fetchone()
         require(c, "Kampanjen hittades inte.", 404)
         result = dict(c)
+        result["branding"] = json.loads(result.pop("branding_json", "{}"))
         result["stops"] = [
             dict(s)
             for s in db.execute(
@@ -598,6 +600,38 @@ class App:
                     )
                     campaigns.append(c)
                 return {"campaigns": campaigns}, None
+            appearance = re.fullmatch(
+                "/api/(manage|admin)/campaigns/([a-f0-9]+)/branding", path
+            )
+            if appearance and method == "POST":
+                scope, cid = appearance.groups()
+                c = self.store.campaign(db, cid)
+                if scope == "admin":
+                    self.store.admin(db, who)
+                else:
+                    self.store.member(db, who, c["org_id"], owner=True)
+                require(
+                    c["status"] == "draft" and not c["paid"],
+                    "Varumärket är låst efter betalning eller publicering.",
+                    409,
+                )
+                require(
+                    not db.execute(
+                        "SELECT 1 FROM payment_orders WHERE campaign_id=?", (cid,)
+                    ).fetchone(),
+                    "Varumärket är låst eftersom betalning har påbörjats.",
+                    409,
+                )
+                try:
+                    branding = validate_branding(data)
+                except ValueError as error:
+                    raise Problem(400, str(error))
+                db.execute(
+                    "UPDATE campaigns SET branding_json=? WHERE id=?",
+                    (json.dumps(branding), cid),
+                )
+                self.store.audit(db, who, "campaign.branded", cid)
+                return self.store.campaign(db, cid), None
             edit = re.fullmatch("/api/admin/campaigns/([a-f0-9]+)/edit", path)
             if edit and method == "POST":
                 self.store.admin(db, who)

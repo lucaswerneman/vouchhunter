@@ -3,7 +3,7 @@ import HuntCore
 import SwiftUI
 
 struct WalletView: View {
-  #if DEBUG && targetEnvironment(simulator)
+  #if DEBUG || FIELD_TESTING
     @ObservedObject private var simulator = SimulatorStore.shared
   #endif
   @State private var vouchers: [Voucher] = []
@@ -27,16 +27,22 @@ struct WalletView: View {
           }
           ForEach(vouchers) { v in
             VStack(alignment: .leading, spacing: 16) {
-              Text((v.title ?? "Din belöning").uppercased()).font(.subheadline).foregroundStyle(
+              if LocalExperience.active {
+                HStack(spacing: 12) {
+                  Image("BrilloLogo").resizable().scaledToFit().frame(width: 48, height: 48)
+                  Text("Brillo Pizza").font(.headline)
+                }
+              }
+              Text(v.title ?? "Din belöning").font(.subheadline).foregroundStyle(
                 .secondary)
               HuntRule()
-              Text((v.reward ?? "Kupong").uppercased()).font(.system(.title2, design: .monospaced))
-              if SimulatorMode.active {
-                Label("TESTKUPONG · EJ GILTIG FÖR INLÖSEN", systemImage: "testtube.2").font(
+              Text(v.reward ?? "Kupong").font(.system(.title2, design: .default))
+              if LocalExperience.active {
+                Label("Testkupong · kan inte lösas in", systemImage: "testtube.2").font(
                   .footnote
                 ).foregroundStyle(HuntStyle.electric)
               }
-              if v.isValid && !SimulatorMode.active, let image = qr(v.code) {
+              if v.isValid && !LocalExperience.active, let image = qr(v.code) {
                 Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(
                   width: 210, height: 210
                 ).frame(maxWidth: .infinity).accessibilityLabel("QR-kod för inlösen")
@@ -45,8 +51,8 @@ struct WalletView: View {
                 v.redeemed != nil
                   ? "Inlöst"
                   : v.isValid
-                    ? (SimulatorMode.active
-                      ? "Testa inlösen under Testläge" : "Visa för personalen vid inlösen")
+                    ? (LocalExperience.active
+                      ? "Testa inlösen under Konto" : "Visa för personalen vid inlösen")
                     : "Giltighetstiden har gått ut"
               ).font(.headline)
               Text(v.venue ?? "")
@@ -58,12 +64,12 @@ struct WalletView: View {
             }.huntPanel()
           }
         }.padding(20)
-      }.background(HuntStyle.canvas).navigationTitle("DINA KUPONGER").navigationBarTitleDisplayMode(
+      }.background(HuntStyle.canvas).navigationTitle("Kuponger").navigationBarTitleDisplayMode(
         .inline
       ).task { await load() }.refreshable { await load() }
-        #if DEBUG && targetEnvironment(simulator)
+        #if DEBUG || FIELD_TESTING
           .onReceive(simulator.$hunt) { hunt in
-            if SimulatorMode.active {
+            if LocalExperience.active {
               vouchers = hunt?.voucher.map { [$0] } ?? []
               loading = false
             }
@@ -72,8 +78,8 @@ struct WalletView: View {
     }
   }
   private func load() async {
-    #if DEBUG && targetEnvironment(simulator)
-      if SimulatorMode.active {
+    #if DEBUG || FIELD_TESTING
+      if LocalExperience.active {
         vouchers = simulator.voucher.map { [$0] } ?? []
         loading = false
         return

@@ -1,0 +1,4 @@
+// Separate, offline Odenplan field test. Never used by the production scheme.
+#include "Release.xcconfig"
+PRODUCT_BUNDLE_IDENTIFIER = se.vouchhunter.app.fieldtest
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = FIELD_TESTING

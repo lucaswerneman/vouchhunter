@@ -103,6 +103,42 @@ class PlatformTests(unittest.TestCase):
         self.assertEqual(status, 200, c)
         return c
 
+    def test_customer_can_brand_only_own_unlocked_campaign(self):
+        path = "/api/manage/campaigns/" + self.campaign["id"] + "/branding"
+        brand = {
+            "accent_color": "#ff113a",
+            "background_color": "#fff7ef",
+            "logo_url": "https://example.com/logo.png",
+            "hero_url": "",
+        }
+        self.assertEqual(self.call(path, brand, self.other)[0], 403)
+        self.assertEqual(self.call(path, brand, self.customer)[0], 403)
+        status, changed = self.call(path, brand, self.owner)
+        self.assertEqual(status, 200, changed)
+        self.assertEqual(changed["branding"]["accent_color"], "#FF113A")
+        self.assertEqual(changed["reward"], self.campaign["reward"])
+        self.assertEqual(changed["stops"], self.campaign["stops"])
+        for bad in [
+            "javascript:alert(1)",
+            "http://example.com/logo.png",
+            "https://127.0.0.1/a",
+            "https://user:secret@example.com/a",
+            "https://example.local/a",
+        ]:
+            self.assertEqual(
+                self.call(path, dict(brand, hero_url=bad), self.owner)[0], 400
+            )
+        self.assertEqual(self.call(path, dict(brand, paid=True), self.owner)[0], 400)
+        self.assertEqual(
+            self.call(path, dict(brand, accent_color="red;display:none"), self.owner)[
+                0
+            ],
+            400,
+        )
+        with self.app.store.transaction() as db:
+            db.execute("UPDATE campaigns SET paid=1 WHERE id=?", (self.campaign["id"],))
+        self.assertEqual(self.call(path, brand, self.owner)[0], 409)
+
     def test_admin_edits_draft_preserving_locations_and_model(self):
         c = self.campaign
         body = dict(c, title="Ny kampanjtitel", capacity=20)

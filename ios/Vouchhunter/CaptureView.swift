@@ -7,10 +7,12 @@ import SwiftUI
 struct CaptureView: View {
   let stop: Stop
   let model: CampaignModel?
+  var localModelURL: URL? = nil
   let collectedCount: Int
   let target: Int
   let collect: () async throws -> Void
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var allowed = false
   @State private var ready = false
   @State private var busy = false
@@ -24,7 +26,7 @@ struct CaptureView: View {
       Color.black.ignoresSafeArea()
       if allowed, let modelURL {
         CollectibleARView(
-          ready: $ready, fileURL: modelURL, captured: success,
+          ready: $ready, fileURL: modelURL, captured: success, reduceMotion: reduceMotion,
           onTap: { Task { await capture() } },
           onHint: { trackingHint = $0 }, onFailure: { error = $0 }
         )
@@ -35,17 +37,19 @@ struct CaptureView: View {
           Button {
             dismiss()
           } label: {
-            Image(systemName: "xmark").padding(14).background(HuntStyle.canvas, in: Circle())
-              .overlay(Circle().stroke(HuntStyle.line, lineWidth: 0.5))
+            Image(systemName: "xmark").padding(14).background(
+              Color.black.opacity(0.65), in: Circle()
+            )
+            .overlay(Circle().stroke(HuntStyle.line, lineWidth: 0.5))
           }.accessibilityLabel("Stäng kameran")
           Spacer()
           Text(stop.name).font(.headline).padding(12).background(
-            HuntStyle.canvas, in: RoundedRectangle(cornerRadius: 8)
+            Color.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 16)
           ).overlay(RoundedRectangle(cornerRadius: 8).stroke(HuntStyle.line, lineWidth: 0.5))
         }
         Text("\(min(target, collectedCount + (success ? 1 : 0))) av \(target) insamlade")
           .font(.subheadline.bold()).padding(12).background(
-            HuntStyle.canvas, in: RoundedRectangle(cornerRadius: 8)
+            Color.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 16)
           ).overlay(RoundedRectangle(cornerRadius: 8).stroke(HuntStyle.line, lineWidth: 0.5))
         Spacer()
         if allowed && modelURL == nil && error.isEmpty {
@@ -55,11 +59,11 @@ struct CaptureView: View {
           Label(
             collectedCount + 1 >= target ? "Belöningen är din!" : "Insamlad!",
             systemImage: "checkmark.circle.fill"
-          ).font(.system(.largeTitle, design: .monospaced))
+          ).font(.system(.largeTitle, design: .default))
             .foregroundStyle(.white)
         } else {
           Text(ready ? "Där är ditt fynd." : "Rikta kameran mot en öppen yta.").font(
-            .system(.title2, design: .monospaced)
+            .system(.title2, design: .default)
           )
           .foregroundStyle(.white)
           Text(
@@ -79,7 +83,7 @@ struct CaptureView: View {
             if modelURL != nil { sessionID = UUID() } else { Task { await loadModel() } }
           }.buttonStyle(HuntSecondaryButton())
         }
-        if !allowed && !error.isEmpty {
+        if !allowed && !error.isEmpty && ARWorldTrackingConfiguration.isSupported {
           Button("Öppna inställningar") {
             if let url = URL(string: UIApplication.openSettingsURLString) {
               UIApplication.shared.open(url)
@@ -103,7 +107,7 @@ struct CaptureView: View {
             Spacer()
           }
         }.buttonStyle(HuntPillButton()).disabled((!ready && !success) || busy)
-      }.padding(24).fontDesign(.monospaced)
+      }.padding(24).fontDesign(.default).foregroundStyle(.white)
     }.task {
       guard ARWorldTrackingConfiguration.isSupported else {
         error = "Den här enheten stöder inte AR. Öppna jakten på en kompatibel iPhone."
@@ -116,6 +120,10 @@ struct CaptureView: View {
     }
   }
   private func loadModel() async {
+    if let localModelURL {
+      modelURL = localModelURL
+      return
+    }
     guard let model else {
       error = "Kampanjen saknar ett 3D-objekt. Försök igen senare."
       return
@@ -134,7 +142,7 @@ struct CaptureView: View {
     defer { busy = false }
     do {
       try await collect()
-      withAnimation(.spring(response: 0.4)) { success = true }
+      withAnimation(reduceMotion ? nil : .spring(response: 0.4)) { success = true }
       error = ""
       UINotificationFeedbackGenerator().notificationOccurred(.success)
     } catch { self.error = error.localizedDescription }
@@ -144,6 +152,7 @@ struct CollectibleARView: UIViewRepresentable {
   @Binding var ready: Bool
   let fileURL: URL
   let captured: Bool
+  let reduceMotion: Bool
   let onTap: () -> Void
   let onHint: (String) -> Void
   let onFailure: (String) -> Void
@@ -170,13 +179,33 @@ struct CollectibleARView: UIViewRepresentable {
     context.coordinator.parent = self
     if captured { context.coordinator.animateCollection() }
   }
-  static func dismantleUIView(_ view: ARView, coordinator: Coordinator) { view.session.pause() }
+  static func dismantleUIView(_ view: ARView, coordinator: Coordinator) {
+    coordinator.displayLink?.invalidate()
+    view.session.pause()
+  }
   @MainActor final class Coordinator: NSObject, @preconcurrency ARSessionDelegate {
     var parent: CollectibleARView
     weak var view: ARView?
     var placed = false
     var object: Entity?
     var animated = false
+    var halo: Entity?
+    var displayLink: CADisplayLink?
+    private var motionTime: Double = 0
+    @objc func advance(_ link: CADisplayLink) {
+      guard !animated, let object else { return }
+      guard !parent.reduceMotion else {
+        object.position.y = 0.7
+        object.orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
+        halo?.scale = .one
+        return
+      }
+      motionTime += min(link.targetTimestamp - link.timestamp, 0.05)
+      let t = Float(motionTime)
+      object.position.y = 0.7 + sin(t * 1.8) * 0.055
+      object.orientation = simd_quatf(angle: t * 0.18, axis: [0, 1, 0])
+      halo?.scale = SIMD3(repeating: 1 + 0.07 * sin(t * 2.5))
+    }
     @objc func tapped(_ gesture: UITapGestureRecognizer) {
       guard parent.ready, !parent.captured, let view,
         var hit = view.entity(at: gesture.location(in: view)), let object
@@ -190,6 +219,12 @@ struct CollectibleARView: UIViewRepresentable {
     func animateCollection() {
       guard !animated, let object else { return }
       animated = true
+      displayLink?.invalidate()
+      halo?.isEnabled = false
+      if parent.reduceMotion {
+        object.isEnabled = false
+        return
+      }
       var destination = object.transform
       destination.scale *= 0.01
       destination.translation.y += 0.5
@@ -224,7 +259,21 @@ struct CollectibleARView: UIViewRepresentable {
         object.generateCollisionShapes(recursive: true)
         self.object = object
         anchor.addChild(object)
+        // A quiet dotted halo marks the collectible without obscuring the real ground.
+        let halo = Entity()
+        let material = UnlitMaterial(color: UIColor.white.withAlphaComponent(0.85))
+        for index in 0..<48 {
+          let angle = Float(index) * 2 * .pi / 48
+          let dot = ModelEntity(mesh: .generateSphere(radius: 0.012), materials: [material])
+          dot.position = [cos(angle) * 0.88, 0.035, sin(angle) * 0.88]
+          halo.addChild(dot)
+        }
+        self.halo = halo
+        anchor.addChild(halo)
         view.scene.addAnchor(anchor)
+        let link = CADisplayLink(target: self, selector: #selector(advance(_:)))
+        link.add(to: .main, forMode: .common)
+        displayLink = link
       } catch {
         parent.onFailure("3D-objektet kunde inte visas. Försök igen senare.")
         return
