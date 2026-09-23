@@ -20,15 +20,14 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 - Nekad platsåtkomst hanteras och kampanjernas tomma läge visas.
 - 21 backendtester passerar: behörigheter, företagsisolering, reservationer under samtidighet, dubbelinsamling, dubbelinlösen, betalningssignaturer och filvalidering.
 - 3 Swift-domäntester passerar med kampanjernas modellmetadata.
-- Kundportalens inloggning, ursprungliga utkastflöde och nya briefbeställning verifierade i webbläsare. Dashboarden har granskats visuellt mot den uppdaterade Apple-riktningen.
+- Kundportalens inloggning, ursprungliga utkastflöde och nya briefbeställning verifierade i webbläsare. Dashboarden har granskats visuellt mot den uppdaterade Apple-riktningen, även vid 390 px skärmbredd.
 
 ## GitHub-kontroller
-- Andra CI-körningen: backend och iOS godkända.
-- Android APK kompileras. Det sista lintfelet gällde en saknad deklaration av kamera som valfri hårdvara; detta är korrigerat inför tredje körningen.
+- Samtliga tre jobb godkända på commit `73588e8`: backendtester, iOS simulatorbygge/Swift-tester och Android APK/lint.
+- Verifierad körning: https://github.com/lucaswerneman/vouchhunter/actions/runs/35891465935
 - Källkoden är säkerhetskopierad på origin/main. Databas och modeller kräver separat backup.
 
 ## Återstår före skarp leverans
-- Slutföra CI-rättningar och verifiera båda mobilapparnas aktuella källkod.
 - Fysisk AR-, GPS- och 3D-modellverifiering på iPhone och Android.
 - Adminpanelens visuella end-to-end-kontroll. Tilldelning av ett lokalt QA-adminkonto väntar på användarens uttryckliga godkännande efter automatisk behörighetsgranskning.
 - Kampanjredigering, personalinbjudningar, e-postverifiering och lösenordsåterställning.
