@@ -167,6 +167,52 @@ class PlatformTests(unittest.TestCase):
             409,
         )
 
+    def test_payment_status_is_scoped_and_uses_confirmed_server_state(self):
+        cid = self.campaign["id"]
+
+        def state():
+            return self.call("/api/manage/campaigns", token=self.owner)[1]["campaigns"][
+                0
+            ]["payment_state"]
+
+        self.assertEqual(state(), "ready")
+        with self.app.store.transaction() as db:
+            db.execute(
+                "INSERT INTO payment_orders VALUES(?,?,?,?,?,?,?)",
+                (
+                    "status-test",
+                    cid,
+                    10000,
+                    "sek",
+                    "https://checkout.stripe.com/test",
+                    now() + 3600,
+                    0,
+                ),
+            )
+        self.assertEqual(state(), "pending")
+        self.assertEqual(
+            self.call("/api/manage/campaigns", token=self.other)[1]["campaigns"], []
+        )
+        with self.app.store.transaction() as db:
+            db.execute(
+                "UPDATE payment_orders SET expires=? WHERE campaign_id=?",
+                (now() - 60, cid),
+            )
+        self.assertEqual(state(), "expired")
+        self.publish_for_test()
+        self.assertEqual(state(), "paid")
+
+    def test_expired_campaign_cannot_start_checkout(self):
+        cid = self.campaign["id"]
+        with self.app.store.transaction() as db:
+            db.execute("UPDATE campaigns SET ends=? WHERE id=?", (now() - 60, cid))
+        with patch("backend.app.urlopen") as gateway:
+            status, result = self.call(
+                "/api/manage/campaigns/" + cid + "/checkout", {}, self.owner
+            )
+        self.assertEqual(status, 409, result)
+        gateway.assert_not_called()
+
     def publish_for_test(self, c=None):
         c = c or self.campaign
         # Test fixture only: no production endpoint bypasses a payment.

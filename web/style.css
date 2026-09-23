@@ -1004,3 +1004,16 @@ dialog::backdrop {
     transition: none !important;
   }
 }
+
+.payment-notice {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.payment-notice h2 {
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+.payment-notice p {
+  margin: 6px 0;
+  max-width: 65ch;
+}

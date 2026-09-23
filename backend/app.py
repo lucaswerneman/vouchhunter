@@ -579,6 +579,23 @@ class App:
                             (c["id"],),
                         ).fetchone()
                     )
+                    order = db.execute(
+                        "SELECT paid,expires FROM payment_orders WHERE campaign_id=? ORDER BY paid DESC,expires DESC LIMIT 1",
+                        (c["id"],),
+                    ).fetchone()
+                    c["payment_state"] = (
+                        "paid"
+                        if c["paid"]
+                        else (
+                            "pending"
+                            if order and order["expires"] > now()
+                            else (
+                                "expired"
+                                if order
+                                else "ready" if c["model_id"] else "preparing"
+                            )
+                        )
+                    )
                     campaigns.append(c)
                 return {"campaigns": campaigns}, None
             edit = re.fullmatch("/api/admin/campaigns/([a-f0-9]+)/edit", path)
@@ -906,6 +923,11 @@ class App:
             raise Problem(404, "Sidan hittades inte.")
 
     def checkout(self, db, c):
+        require(
+            c["status"] == "draft" and c["ends"] > now(),
+            "Kampanjperioden behöver uppdateras innan betalning.",
+            409,
+        )
         secret = os.environ.get("STRIPE_SECRET_KEY")
         price = os.environ.get("STRIPE_PRICE_ID")
         base = os.environ.get("PUBLIC_URL", "")
@@ -925,8 +947,8 @@ class App:
             "mode": "payment",
             "line_items[0][price]": price,
             "line_items[0][quantity]": "1",
-            "success_url": base + "/?payment=received",
-            "cancel_url": base + "/?payment=cancelled",
+            "success_url": base + "/?payment=received&campaign=" + c["id"],
+            "cancel_url": base + "/?payment=cancelled&campaign=" + c["id"],
             "client_reference_id": c["id"],
             "metadata[campaign_id]": c["id"],
         }

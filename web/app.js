@@ -226,7 +226,12 @@ function campaignForm(brief = null, editing = null) {
       radius: 40,
     }));
     try {
-      const created = await api(editing ? "/admin/campaigns/" + editing.id + "/edit" : "/admin/campaigns", data);
+      const created = await api(
+        editing
+          ? "/admin/campaigns/" + editing.id + "/edit"
+          : "/admin/campaigns",
+        data,
+      );
       if (brief)
         await api("/admin/briefs/" + brief.id + "/link", {
           campaign_id: created.id,
@@ -245,17 +250,33 @@ function campaignForm(brief = null, editing = null) {
   if (editing) {
     $("#campaign-form h2").textContent = "Redigera kampanj";
     $("#campaign-form .eyebrow").textContent = "UTKAST";
-    for (const key of ["org_id", "title", "description", "reward", "terms", "venue", "target", "capacity", "voucher_days"])
+    for (const key of [
+      "org_id",
+      "title",
+      "description",
+      "reward",
+      "terms",
+      "venue",
+      "target",
+      "capacity",
+      "voucher_days",
+    ])
       $("#campaign-form [name=" + key + "]").value = editing[key];
     for (const key of ["starts", "ends"]) {
       const d = new Date(editing[key] * 1000);
-      $("#campaign-form [name=" + key + "]").value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      $("#campaign-form [name=" + key + "]").value = new Date(
+        d.getTime() - d.getTimezoneOffset() * 60000,
+      )
+        .toISOString()
+        .slice(0, 16);
     }
     $("#campaign-form [name=org_id]").disabled = true;
     $("#campaign-form [name=target]").max = editing.stops.length;
     // Locations retain their identity; this form edits the offer and its period.
     $("#stops").closest("section").hidden = true;
-    $("#stops").querySelectorAll("input").forEach(input => input.disabled = true);
+    $("#stops")
+      .querySelectorAll("input")
+      .forEach((input) => (input.disabled = true));
   }
   if (brief) {
     for (const key of ["org_id", "title", "description", "reward"])
@@ -297,7 +318,8 @@ function detail(id) {
         e.target.disabled = false;
       }
     };
-  if ($("#edit-campaign")) $("#edit-campaign").onclick = () => campaignForm(null, c);
+  if ($("#edit-campaign"))
+    $("#edit-campaign").onclick = () => campaignForm(null, c);
   if ($("#admin-change"))
     $("#admin-change").onclick = async (e) => {
       e.target.disabled = true;
@@ -361,10 +383,49 @@ function briefForm() {
     }
   };
 }
+function paymentLabel(c) {
+  return (
+    {
+      paid: "Betald",
+      pending: "Inväntar betalning",
+      expired: "Betalningslänken har löpt ut",
+      ready: "Redo för betalning",
+      preparing: "Upplägget förbereds",
+    }[c.payment_state] || (c.paid ? "Betald" : "Upplägget förbereds")
+  );
+}
+function paymentReturnNotice() {
+  const query = new URLSearchParams(location.search);
+  const outcome = query.get("payment");
+  if (!["received", "cancelled"].includes(outcome)) return "";
+  const c = campaigns.find((item) => item.id === query.get("campaign"));
+  const message = !c
+    ? "Kontrollera statusen för din kampanj i listan nedan. En återkomst från betaltjänsten är inte en betalningsbekräftelse."
+    : c.paid
+      ? "Betalningen är bekräftad. Vi tar hand om publiceringen av din kampanj."
+      : outcome === "cancelled"
+        ? "Du har lämnat betalningen. Kampanjen är sparad. Här ser du den senast bekräftade betalningsstatusen."
+        : "Vi inväntar bekräftelse från betaltjänsten. Det kan ta en stund. Uppdatera status innan du försöker betala igen.";
+  return `<section class="panel payment-notice" role="status" aria-live="polite"><div><h2>${c?.paid ? "Tack för din betalning" : "Din betalningsstatus"}</h2>${c ? `<p>${esc(c.title)}</p>` : ""}<p>${message}</p></div></section>`;
+}
 function payments() {
   shell(
-    `<section class="pagehead"><div><div class="eyebrow">BETALNING PER KAMPANJ</div><h1>Betalningar</h1><p>Se vilka kampanjer som är betalda och vilka som väntar på dig.</p></div></section><section class="panel"><div class="table-wrap"><table><thead><tr><th>Kampanj</th><th>Betalningsstatus</th><th>Nästa steg</th></tr></thead><tbody>${campaigns.map((c) => `<tr><td><strong>${esc(c.title)}</strong><small>${date(c.starts)} – ${date(c.ends)}</small></td><td><span class="badge ${c.paid ? "active" : ""}">${c.paid ? "Betald" : c.model_id ? "Väntar på betalning" : "Upplägget förbereds"}</span></td><td><button data-detail="${c.id}" class="small">${c.paid ? "Visa kampanj" : "Granska upplägg"} →</button></td></tr>`).join("")}</tbody></table></div>${campaigns.length ? "" : '<div class="empty"><h2>Inga betalningar ännu.</h2><p>När ditt kampanjupplägg är klart hittar du betalningen här.</p></div>'}</section>`,
+    `<section class="pagehead"><div><div class="eyebrow">BETALNING PER KAMPANJ</div><h1>Betalningar</h1><p>Se vilka kampanjer som är betalda och vilka som väntar på dig.</p></div><button id="refresh-payments" class="small">Uppdatera status</button></section>${paymentReturnNotice()}<p id="payment-error" class="error" role="alert"></p><section class="panel"><div class="table-wrap"><table><thead><tr><th>Kampanj</th><th>Betalningsstatus</th><th>Nästa steg</th></tr></thead><tbody>${campaigns.map((c) => `<tr><td><strong>${esc(c.title)}</strong><small>${date(c.starts)} – ${date(c.ends)}</small></td><td><span class="badge ${c.paid ? "active" : ""}">${esc(paymentLabel(c))}</span></td><td><button data-detail="${c.id}" class="small">${c.paid ? "Visa kampanj" : "Granska upplägg"} →</button></td></tr>`).join("")}</tbody></table></div>${campaigns.length ? "" : '<div class="empty"><h2>Inga betalningar ännu.</h2><p>När ditt kampanjupplägg är klart hittar du betalningen här.</p></div>'}</section>`,
   );
+  $("#refresh-payments").onclick = async (e) => {
+    const button = e.currentTarget;
+    button.disabled = true;
+    button.textContent = "Uppdaterar…";
+    try {
+      await loadCampaigns();
+      if (page === "payments") payments();
+    } catch (error) {
+      if ($("#payment-error")) $("#payment-error").textContent = error.message;
+    } finally {
+      button.disabled = false;
+      button.textContent = "Uppdatera status";
+    }
+  };
   document
     .querySelectorAll("[data-detail]")
     .forEach((b) => (b.onclick = () => detail(b.dataset.detail)));
@@ -521,6 +582,13 @@ async function init() {
     if (adminMode && !me.is_admin)
       throw Error("Den här vyn är endast för Vouchhunters administratör.");
     await loadCampaigns();
+    if (
+      !adminMode &&
+      ["received", "cancelled"].includes(
+        new URLSearchParams(location.search).get("payment"),
+      )
+    )
+      page = "payments";
     render();
   } catch (ex) {
     $("#app").innerHTML =

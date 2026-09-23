@@ -48,3 +48,9 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 - Admin kan redigera erbjudande, period och omfattning i obetalda utkast. Platser och 3D-koppling bevaras.
 - Påbörjad betalning låser både upplägg och modellbyte, även om en äldre betalningssession har löpt ut. Upplåsning kräver ett kommande kontrollerat avbokningsflöde.
 - Tre nya backendtester verifierar behörighet, validering, bevarade kopplingar och betalningslås. Visuell adminverifiering väntar fortfarande på godkännandet ovan.
+
+## Betalningsåterkomst
+- Kunden återvänder till betalningsöversikten med kampanjkoppling. Betald-status hämtas från servern, aldrig från returadressens parametrar.
+- Manuell uppdatering, väntande/utgången betalningslänk och avbruten återkomst visas utan att påstå att en betalning lyckats.
+- Utgångna kampanjperioder stoppas före kontakt med betaltjänsten.
+- Statusflödet och uppdateringsknappen har kontrollerats i webbläsare. Skarp Stripe-verifiering återstår.
