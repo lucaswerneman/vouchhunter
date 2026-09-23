@@ -1,0 +1,34 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+000000000000000000000001 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = API.swift; sourceTree = "<group>"; };
+000000000000000000000002 = { isa = PBXBuildFile; fileRef = 000000000000000000000001; };
+000000000000000000000003 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+000000000000000000000004 = { isa = PBXBuildFile; fileRef = 000000000000000000000003; };
+000000000000000000000005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VouchhunterApp.swift; sourceTree = "<group>"; };
+000000000000000000000006 = { isa = PBXBuildFile; fileRef = 000000000000000000000005; };
+000000000000000000000007 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
+000000000000000000000008 = { isa = PBXBuildFile; fileRef = 000000000000000000000007; };
+000000000000000000000009 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletView.swift; sourceTree = "<group>"; };
+00000000000000000000000A = { isa = PBXBuildFile; fileRef = 000000000000000000000009; };
+00000000000000000000000B = { isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+00000000000000000000000C = { isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+00000000000000000000000D = { isa = PBXFileReference; explicitFileType = wrapper.application; path = Vouchhunter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+00000000000000000000000E = { isa = PBXGroup; children = (000000000000000000000001,000000000000000000000003,000000000000000000000005,000000000000000000000007,000000000000000000000009); path = Vouchhunter; sourceTree = "<group>"; };
+00000000000000000000000F = { isa = PBXGroup; children = (00000000000000000000000B,00000000000000000000000C); path = Configuration; sourceTree = "<group>"; };
+000000000000000000000010 = { isa = PBXGroup; children = (00000000000000000000000D); name = Products; sourceTree = "<group>"; };
+000000000000000000000011 = { isa = PBXGroup; children = (00000000000000000000000E,00000000000000000000000F,000000000000000000000010); sourceTree = "<group>"; };
+000000000000000000000012 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000002,000000000000000000000004,000000000000000000000006,000000000000000000000008,00000000000000000000000A); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000013 = { isa = XCLocalSwiftPackageReference; relativePath = ../packages/HuntCore; };
+000000000000000000000014 = { isa = XCSwiftPackageProductDependency; package = 000000000000000000000013; productName = HuntCore; };
+000000000000000000000015 = { isa = PBXBuildFile; productRef = 000000000000000000000014; };
+000000000000000000000016 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000015); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000017 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000018 = { isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Debug; };
+000000000000000000000019 = { isa = XCBuildConfiguration; baseConfigurationReference = 00000000000000000000000B; buildSettings = { CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Configuration/Debug-Info.plist; PRODUCT_NAME = "$(TARGET_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; TARGETED_DEVICE_FAMILY = 1; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; ENABLE_USER_SCRIPT_SANDBOXING = YES; }; name = Debug; };
+00000000000000000000001A = { isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Release; };
+00000000000000000000001B = { isa = XCBuildConfiguration; baseConfigurationReference = 00000000000000000000000C; buildSettings = { CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Configuration/Release-Info.plist; PRODUCT_NAME = "$(TARGET_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; TARGETED_DEVICE_FAMILY = 1; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OPTIMIZATION_LEVEL = "-O"; ENABLE_USER_SCRIPT_SANDBOXING = YES; }; name = Release; };
+00000000000000000000001C = { isa = XCConfigurationList; buildConfigurations = (000000000000000000000018,00000000000000000000001A); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+00000000000000000000001D = { isa = XCConfigurationList; buildConfigurations = (000000000000000000000019,00000000000000000000001B); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+00000000000000000000001E = { isa = PBXNativeTarget; buildConfigurationList = 00000000000000000000001D; buildPhases = (000000000000000000000012,000000000000000000000016,000000000000000000000017); buildRules = (); dependencies = (); name = Vouchhunter; packageProductDependencies = (000000000000000000000014); productName = Vouchhunter; productReference = 00000000000000000000000D; productType = "com.apple.product-type.application"; };
+00000000000000000000001F = { isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = YES; LastUpgradeCheck = 2600; }; buildConfigurationList = 00000000000000000000001C; compatibilityVersion = "Xcode 14.0"; developmentRegion = sv; hasScannedForEncodings = 0; knownRegions = (sv,en,Base); mainGroup = 000000000000000000000011; packageReferences = (000000000000000000000013); productRefGroup = 000000000000000000000010; projectDirPath = ""; projectRoot = ""; targets = (00000000000000000000001E); };
+}; rootObject = 00000000000000000000001F; }

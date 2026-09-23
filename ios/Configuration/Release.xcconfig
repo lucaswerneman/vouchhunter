@@ -1,0 +1,3 @@
+API_BASE_URL = https:/$()/configuration-required.invalid
+PRODUCT_BUNDLE_IDENTIFIER = se.vouchhunter.app
+#include? "Local.xcconfig"

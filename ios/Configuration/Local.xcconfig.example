@@ -1,0 +1,3 @@
+// Copy to Local.xcconfig locally. Never commit signing/account overrides.
+// DEVELOPMENT_TEAM = YOUR_TEAM_ID
+// API_BASE_URL = https:/$()/your-api-domain.example
