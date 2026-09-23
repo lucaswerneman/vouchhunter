@@ -2,7 +2,7 @@
 
 Plattform för kampanjer med skattjakter utomhus, AR-insamling och voucherinlösen.
 
-**Under aktiv utveckling. Inte lanseringsklar.** Projektet innehåller en fungerande lokal API-/portalgrund och en iOS-app under uppbyggnad. Android, skarp drift och butikspublicering återstår. Se `docs/STATUS.md` för verifieringsstatus.
+**Under aktiv utveckling. Inte lanseringsklar.** Projektet innehåller en fungerande lokal API-/portalgrund och en iOS-app under uppbyggnad. Android-källkod finns men dess bygge och AR är ännu inte verifierade. Skarp drift och butikspublicering återstår. Se `docs/STATUS.md` för verifieringsstatus.
 
 ## Struktur
 
@@ -10,7 +10,7 @@ Plattform för kampanjer med skattjakter utomhus, AR-insamling och voucherinlös
 - `web/` – företagsportal och offentliga kampanjsidor, utan byggsteg.
 - `ios/` – native SwiftUI-app med MapKit och RealityKit; öppna `Vouchhunter.xcodeproj`.
 - `packages/HuntCore/` – Swift-modeller och geoberäkning med tester.
-- `android/` – reserverad för Android-klienten; ej färdig.
+- `android/` – Kotlin-klient, ARCore/SceneView, Google Maps och Gradle-wrapper; verifiering pågår.
 - `docs/` – designbeslut, drift och kvarvarande arbete.
 
 ## Lokal start
@@ -21,6 +21,6 @@ Python 3.11 eller senare:
 python3 -m backend.app
 ```
 
-Öppna http://127.0.0.1:8080 och skapa ett företagskonto. Databasen skapas i `data/` och ingår inte i Git. Inga fiktiva kampanjer eller användare skapas automatiskt. Publicering kräver betalning och är spärrad tills betalningsleverantören konfigurerats.
+Öppna http://127.0.0.1:8787 och skapa ett företagskonto. Databasen skapas i `data/` och ingår inte i Git. Inga fiktiva kampanjer eller användare skapas automatiskt. Publicering kräver betalning och är spärrad tills betalningsleverantören konfigurerats.
 
 Projektet är proprietärt tills ägaren beslutar annat. Ett publikt repo är inte en open source-licens.

@@ -135,7 +135,7 @@ class App:
             require(method in ('GET','POST'),'Metoden stöds inte.',405)
             if method=='POST' and path!='/api/payments/webhook':
                 origin=e.get('HTTP_ORIGIN')
-                expected=os.environ.get('PUBLIC_URL',f"http://{e.get('HTTP_HOST','localhost:8080')}").rstrip('/')
+                expected=os.environ.get('PUBLIC_URL',f"http://{e.get('HTTP_HOST','localhost:8787')}").rstrip('/')
                 require(not origin or origin==expected,'Otillåtet ursprung.',403)
                 require(e.get('CONTENT_TYPE','').split(';')[0]=='application/json','JSON krävs.',415)
             length=int(e.get('CONTENT_LENGTH') or 0)
@@ -176,7 +176,8 @@ class App:
                 self.attempts={k:v for k,v in self.attempts.items() if v[0]>stamp-900}
                 prev=self.attempts.get(key,(stamp,0));require(prev[1]<30,'För många försök. Försök senare.',429)
                 self.attempts[key]=(prev[0],prev[1]+1)
-                email=text_field(data,'email',3,254).lower();pw=text_field(data,'password',10,256)
+                email=text_field(data,'email',3,254).lower();pw=data.get('password')
+                require(isinstance(pw,str) and 10<=len(pw)<=256,'Lösenordet måste innehålla 10–256 tecken.')
                 require(re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email),'Ange en giltig e-postadress.')
                 row=db.execute('SELECT * FROM users WHERE email=?',(email,)).fetchone()
                 if path=='/api/register':
@@ -234,7 +235,7 @@ class App:
             match=re.fullmatch('/api/manage/campaigns/([a-f0-9]+)/(publish|pause|checkout)',path)
             if match and method=='POST':
                 cid,action=match.groups();c=self.store.campaign(db,cid);self.store.member(db,who,c['org_id'],True)
-                if action=='checkout': return self.checkout(c),None
+                if action=='checkout': return self.checkout(db,c),None
                 if action=='publish': require(c['paid'],'Betala kampanjen innan publicering.',409);require(c['ends']>now(),'Kampanjens slutdatum har passerat.',409)
                 db.execute('UPDATE campaigns SET status=? WHERE id=?',('active' if action=='publish' else 'paused',cid));self.store.audit(db,who,'campaign.'+action,cid)
                 return self.store.campaign(db,cid),None
@@ -249,15 +250,19 @@ class App:
                 return {'vouchers':[dict(r) for r in rows]},None
             if path in ('/api/vouchers/check','/api/vouchers/redeem') and method=='POST': return self.store.redeem(db,who,text_field(data,'code',10,100),path.endswith('/redeem')),None
             raise Problem(404,'Sidan hittades inte.')
-    def checkout(self,c):
+    def checkout(self,db,c):
         secret=os.environ.get('STRIPE_SECRET_KEY');price=os.environ.get('STRIPE_PRICE_ID');base=os.environ.get('PUBLIC_URL','')
         require(secret and price and base.startswith('https://'),'Betalning är inte konfigurerad ännu. Utkastet är sparat.',503)
         require(not c['paid'],'Kampanjen är redan betald.',409)
+        existing=db.execute('SELECT url FROM payment_orders WHERE campaign_id=? AND expires>? AND paid=0 ORDER BY expires DESC LIMIT 1',(c['id'],now()+60)).fetchone()
+        if existing: return {'url':existing['url']}
         fields={'mode':'payment','line_items[0][price]':price,'line_items[0][quantity]':'1','success_url':base+'/?payment=received','cancel_url':base+'/?payment=cancelled','client_reference_id':c['id'],'metadata[campaign_id]':c['id']}
         req=Request('https://api.stripe.com/v1/checkout/sessions',data=urlencode(fields).encode(),headers={'Authorization':'Bearer '+secret,'Idempotency-Key':'campaign-'+c['id']+'-'+str(now()//3600)})
         try:
             with urlopen(req,timeout=15) as response: session=json.load(response)
         except Exception: raise Problem(502,'Betaltjänsten svarar inte. Försök igen senare.')
+        require(isinstance(session.get('amount_total'),int) and session['amount_total']>0,'Kampanjpriset är inte giltigt.',502)
+        db.execute('INSERT OR IGNORE INTO payment_orders(session_id,campaign_id,amount,currency,url,expires) VALUES(?,?,?,?,?,?)',(session['id'],c['id'],session['amount_total'],session['currency'],session['url'],session['expires_at']))
         return {'url':session['url']}
     def webhook(self,e,raw,event):
         secret=os.environ.get('STRIPE_WEBHOOK_SECRET');require(secret,'Betalning är inte konfigurerad.',503)
@@ -274,8 +279,10 @@ class App:
             if event.get('type') in ('checkout.session.completed','checkout.session.async_payment_succeeded'):
                 session=event['data']['object'];cid=session.get('metadata',{}).get('campaign_id')
                 if session.get('payment_status')=='paid' and cid:
-                    # Stripe-signed metadata originates from server-created sessions only.
-                    c=self.store.campaign(db,cid)
+                    order=db.execute('SELECT * FROM payment_orders WHERE session_id=?',(session.get('id'),)).fetchone()
+                    require(order and order['campaign_id']==cid and order['amount']==session.get('amount_total') and order['currency']==session.get('currency') and session.get('mode')=='payment','Betalningen matchar inte beställningen.',409)
+                    self.store.campaign(db,cid)
+                    db.execute('UPDATE payment_orders SET paid=1 WHERE session_id=?',(session['id'],))
                     db.execute('UPDATE campaigns SET paid=1 WHERE id=?',(cid,));self.store.audit(db,None,'payment.confirmed',cid)
             db.execute('INSERT INTO webhook_events VALUES(?,?)',(eid,now()))
         return {'ok':True}
@@ -283,6 +290,6 @@ class App:
 def create_app(): return App()
 if __name__=='__main__':
     from wsgiref.simple_server import make_server
-    port=int(os.environ.get('PORT',8080));app=create_app()
+    port=int(os.environ.get('PORT',8787));app=create_app()
     print(f'Vouchhunter: http://127.0.0.1:{port}',flush=True)
     with make_server('127.0.0.1',port,app) as server: server.serve_forever()

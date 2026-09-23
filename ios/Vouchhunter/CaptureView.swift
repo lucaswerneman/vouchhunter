@@ -51,7 +51,7 @@ struct PizzaARView:UIViewRepresentable {
     }
     func updateUIView(_ view:ARView,context:Context){}
     static func dismantleUIView(_ view:ARView,coordinator:Coordinator){view.session.pause()}
-    @MainActor final class Coordinator:NSObject,ARSessionDelegate {
+    @MainActor final class Coordinator:NSObject,@preconcurrency ARSessionDelegate {
         let parent:PizzaARView
         weak var view:ARView?
         var placed=false

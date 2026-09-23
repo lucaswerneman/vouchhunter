@@ -38,7 +38,10 @@ struct RootView: View {
 struct LoginView: View {
     @ObservedObject var session:Session
     @State private var register=false
-    @State private var name="",email="",password="",error=""
+    @State private var name=""
+    @State private var email=""
+    @State private var password=""
+    @State private var error=""
     @State private var busy=false
     var body: some View {
         NavigationStack {
@@ -123,7 +126,7 @@ struct HuntView: View {
             }.padding(22)
         }.navigationTitle("Jakten").navigationBarTitleDisplayMode(.inline)
         .task{location.start();do{let r:HuntEnvelope=try await API.shared.request("/hunts/"+campaign.id);hunt=r.hunt}catch{self.error=error.localizedDescription}}
-        .onDisappear{location.stop()}
+        .onDisappear{if selected == nil {location.stop()}}
         .fullScreenCover(item:$selected,onDismiss:{location.start()}){s in CaptureView(stop:s){try await collect(s)}}
     }
     private func canCollect(_ stop:Stop)->Bool {

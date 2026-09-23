@@ -16,15 +16,11 @@ Första versionen ska utvecklas för både iPhone och Android. AR-upplevelsen be
 
 ## Teknisk inriktning
 
-Arbetsförslag: Unity med AR Foundation för mobilapparna, med ARKit-plugin för iPhone och ARCore-plugin för Android. Det ger en gemensam grund för 3D-objekt, animationer, kamerans AR-session och insamling. Separata byggen och tester behövs för respektive plattform.
+Genomförandebeslut efter användarens krav på direkt Xcode-stöd: native iPhone-app med SwiftUI, MapKit och RealityKit/ARKit. Android får en egen Kotlin-app med ARCore via SceneView och Google Maps. Detta ersätter det tidigare preliminära Unity-förslaget. Båda klienterna delar backend, datamodell och regler för kampanjer, insamling och vouchers.
 
-GPS används för att avgöra om deltagaren är nära ett stopp. Därefter placeras pizzan lokalt i AR-miljön. Exakt gemensam förankring på samma punkt för alla deltagare ingår inte i detta arbetsförslag.
+GPS låser upp insamling nära en kampanjplats. Objektet förankras därefter lokalt på en upptäckt yta. Exakt delad AR-förankring mellan användare ingår inte i nuvarande implementation. iPhone-appen kräver iOS 18 eller senare; kompatibla fysiska enheter måste verifieras före lansering.
 
-Karta och kampanjdata hålls separata från AR-momentet. Kartleverantör väljs efter kontroll av Unity-stöd, villkor och kostnad. Backend hanterar konton, kampanjer, verifierad insamling och vouchers för båda plattformarna. Företagsportalen planeras som en separat webbapplikation.
-
-Insamling och belöningar ska använda serverkontrollerna som beskrivs nedan. Teknikvalet är ett arbetsförslag som ska verifieras tidigt på båda målplattformarna som del av produktutvecklingen.
-
-Underlag: [Googles guide till AR Foundation](https://developers.google.com/ar/develop/unity-arf/getting-started-ar-foundation) och [Unitys översikt för AR-utveckling](https://docs.unity.com/en-us/engine/6000.0/manual/xr/support/aroverview), kontrollerade 23 september 2026.
+Företagsportalen är en separat webbapplikation i samma repo. Drift, konfiguration och isolering beskrivs i docs/OPERATIONS.md. Faktisk implementation och kvarstående arbete beskrivs i docs/STATUS.md.
 
 ## Kampanjer vid lansering
 

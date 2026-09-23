@@ -1,7 +1,7 @@
 import CoreLocation
 import Foundation
 
-@MainActor final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
+@MainActor final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocationManagerDelegate {
     private let manager=CLLocationManager()
     @Published var location: CLLocation?
     @Published var message: String?
