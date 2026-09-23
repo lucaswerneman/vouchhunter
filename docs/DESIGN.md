@@ -63,3 +63,8 @@ Produktloopen är en spelifierad kuponginsamling: upptäck kampanj → gå till 
 Användarens bifogade bild styr nu spelarens HUD: monospaced systemtypografi, korta versala etiketter, tunna linjeikoner, mörka paneler och en ensam tydlig limegrön primärhandling. Detta ersätter Family-rundad typografi i jakt/AR; Family bidrar fortsatt med pillknappar, mjuka paneler och avstånd. Kartan behålls ljus och dämpad. Längre villkor skrivs fortsatt som vanlig text, inte versala textblock. Ingen gissning om referensens exakta font: native systemmonospace används.
 
 Användaren preciserade referensen till [MSCHF Bar & Grill & E-commerce i Refero](https://refero.design/apps/115) och bekräftade att 3D-kartan ska behållas. Den vinklade kartan är fortsatt huvudytan; monospaced typografi och mörka spelpaneler ligger ovanpå. Simulatorns kombinerade vy är visuellt verifierad.
+
+## Mörk spelkarta
+Användaren har låst MSCHF som huvudreferens och vill även ha mörk karta. Jaktvyn använder därför mörkt färgschema även för MapKit, med bibehållen realistisk höjd, dämpade kartetiketter och färgat 3D-föremål. Lime reserveras för spelarens primärhandling; kupongmålet ligger kvar i panelen.
+
+Accentprecisering: användaren vill följa MSCHF-referensen nära men ersätta gult med grönt. Primärknapp och spelaccent använder nu klart grönt (sRGB 0.18, 0.95, 0.42), inte gulgrön lime.

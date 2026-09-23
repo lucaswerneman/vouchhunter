@@ -82,10 +82,10 @@ enum HuntStyle {
   static let green = Color(
     uiColor: UIColor { traits in
       traits.userInterfaceStyle == .dark
-        ? UIColor(red: 0.30, green: 0.87, blue: 0.62, alpha: 1)
+        ? UIColor(red: 0.18, green: 0.95, blue: 0.42, alpha: 1)
         : UIColor(red: 0.0, green: 0.47, blue: 0.30, alpha: 1)
     })
-  static let electric = Color(red: 0.73, green: 0.95, blue: 0.30)
+  static let electric = Color(red: 0.18, green: 0.95, blue: 0.42)
   static let mint = green.opacity(0.10)
   static let surface = Color(uiColor: .secondarySystemGroupedBackground)
 }
@@ -576,6 +576,7 @@ struct HuntView: View {
         .padding(.horizontal, 12).padding(.bottom, 8)
     }
     .fontDesign(.monospaced)
+    .preferredColorScheme(.dark)
     .tint(HuntStyle.green)
     .navigationTitle(isPreview ? "Förhandsvisning" : "Jakten").navigationBarTitleDisplayMode(
       .inline
