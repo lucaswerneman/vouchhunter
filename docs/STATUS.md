@@ -19,14 +19,13 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 - Inloggning mot lokal backend och lagring i Keychain fungerar med ad hoc-signering.
 - Nekad platsåtkomst hanteras och kampanjernas tomma läge visas.
 - 21 backendtester passerar: behörigheter, företagsisolering, reservationer under samtidighet, dubbelinsamling, dubbelinlösen, betalningssignaturer och filvalidering.
-- 3 Swift-domäntester passerade före senaste tillägget av valfri modellmetadata; ny körning följer.
+- 3 Swift-domäntester passerar med kampanjernas modellmetadata.
 - Kundportalens inloggning, ursprungliga utkastflöde och nya briefbeställning verifierade i webbläsare. Dashboarden har granskats visuellt mot den uppdaterade Apple-riktningen.
 
 ## GitHub-kontroller
-- Första CI-körningen: backend godkänd.
-- Android APK kompilerades, men lint stoppade jobbet (saknade explicit subdomäninställning och ytterligare rapport behöver följas upp).
-- iOS-jobbet hittade ett AR-ankaranrop som skilde mellan Xcode-versioner; koden har ändrats till world-transform-ankare. Ny CI-körning krävs.
-- Första två Git-backuperna finns på origin/main. Senare ändringar pushas efter lokala kontroller.
+- Andra CI-körningen: backend och iOS godkända.
+- Android APK kompileras. Det sista lintfelet gällde en saknad deklaration av kamera som valfri hårdvara; detta är korrigerat inför tredje körningen.
+- Källkoden är säkerhetskopierad på origin/main. Databas och modeller kräver separat backup.
 
 ## Återstår före skarp leverans
 - Slutföra CI-rättningar och verifiera båda mobilapparnas aktuella källkod.
@@ -36,7 +35,7 @@ Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och int
 - Återbetalning, prisvisning, kontrollerad hantering av paus/avbokning och supportprocesser.
 - Starkare skydd mot förfalskade positionsuppgifter; GPS från klient är inte bevis på fysisk närvaro.
 - Skarp HTTPS-domän, drift, mejl, Stripe, Google Maps-nyckel, övervakning och extern backup av databas plus modeller.
-- Apple Developer-/Google Play-konton, signering, appikoner, integritetsuppgifter, universallänkar och butikspublicering.
+- Apple Developer-/Google Play-konton, signering, integritetsuppgifter, universallänkar och butikspublicering.
 
 ## Isolering och arbetsantaganden
 - Endast `/Users/lucaswerneman/Documents/ChatGPT/Vouchhunter` används för källkod och data. Separat app-id, port 8787, databas och namngiven simulator.
