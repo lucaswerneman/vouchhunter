@@ -12,6 +12,12 @@ Detta ersätter tidigare Family/MSCHF-riktningar nedan, som finns kvar enbart so
 - Pizza, lugn svävning, pulserande ring och haptik ger spelkänsla. Minska rörelse stoppar de kontinuerliga animationerna. AR är lokal ytplacering inom GPS-radie, inte ett delat geospatialt ankare.
 - Simulatorn provar tio fynd. Det separata fälttestet på Odenplan provar ett fynd med riktig GPS och AR. Det får aldrig presenteras som en skarp Brillo-kampanj.
 
+## Förtydligad startresa – 24 september
+
+Användarens godkända kampanjrad är fortsatt referensen. Raden behåller logotyp, företag och titel men tillför konkret insamlingsmål och belöning. Fälttestets mål är fortfarande en pizza; simulatorns mål är tio. Exempelmarkeringen visas intill erbjudandet.
+
+Primära kampanjknappar har vit text. Knappfärgen mörkas vid behov inom samma kulör för läsbarhet; kundens logotyp och övriga accentfärg bevaras. Förstagångsintroduktionen följer de redan granskade WhatsApp-grupperna och systemtypografin: en skärm med produktförklaring, tre steg och en primär handling. Den sparas per installation och kan öppnas igen från frågetecknet eller Konto. Inga åtkomstfrågor ställs där.
+
 ## Historik – ersatta riktningar
 
 Direkt bygge enligt användarens mandat. Refero-sökningen blockerades av NO_SUBSCRIPTION; inga externa skärmar har påståtts granskade. Refero-skillens lokala Typography, Color, Craft Details och Anti-AI-slop är referensunderlag.

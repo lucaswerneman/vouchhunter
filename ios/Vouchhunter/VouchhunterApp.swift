@@ -4,17 +4,27 @@ import SceneKit
 import SwiftUI
 
 @main struct VouchhunterApp: App {
+  @AppStorage("vouchhunter.didSeeIntroduction.v1") private var didSeeIntroduction = false
   var body: some Scene {
     WindowGroup {
-      #if DEBUG || FIELD_TESTING
-        if LocalExperience.active {
-          SimulatorExperience().vouchhunterTheme()
-        } else {
+      Group {
+        #if DEBUG || FIELD_TESTING
+          if LocalExperience.active {
+            SimulatorExperience().vouchhunterTheme()
+          } else {
+            RootView().vouchhunterTheme()
+          }
+        #else
           RootView().vouchhunterTheme()
-        }
-      #else
-        RootView().vouchhunterTheme()
-      #endif
+        #endif
+      }
+      .fullScreenCover(
+        isPresented: Binding(
+          get: { !didSeeIntroduction }, set: { if !$0 { didSeeIntroduction = true } })
+      ) {
+        IntroductionView { didSeeIntroduction = true }.vouchhunterTheme()
+          .interactiveDismissDisabled()
+      }
     }
   }
 }
@@ -131,7 +141,29 @@ extension Color {
 }
 extension Campaign {
   var accent: Color { Color(brandHex: branding?.accent_color) }
-  var accentText: Color { Color.brandText(on: branding?.accent_color) }
+  var accentText: Color { .white }
+  var buttonAccent: Color {
+    // Keep the campaign hue while ensuring white button labels have 4.5:1 contrast.
+    let value =
+      UInt32(
+        (branding?.accent_color ?? "242424").replacingOccurrences(of: "#", with: ""), radix: 16)
+      ?? 0x242424
+    var channels = [16, 8, 0].map { Double((value >> $0) & 255) / 255 }
+    func luminance(_ values: [Double]) -> Double {
+      let linear = values.map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+      return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
+    }
+    while luminance(channels) > 0.1833 { channels = channels.map { $0 * 0.97 } }
+    return Color(red: channels[0], green: channels[1], blue: channels[2])
+  }
+  var collectionPitch: String {
+    if LocalExperience.active {
+      return target == 1
+        ? "Hitta pizzan på Odenplan och samla den i AR för att få en testkupong på den nya pizzan."
+        : "Samla \(target) pizzor på stan – så bjuder vi på din första pizza."
+    }
+    return "Samla \(target) föremål och lås upp din kupong: \(reward)."
+  }
   var brandSurface: Color { Color(brandHex: branding?.background_color, fallback: 0xF2F2F2) }
 }
 struct CampaignAvatar: View {
@@ -391,7 +423,7 @@ struct ExploreView: View {
           NavigationLink {
             CampaignOverviewView(campaign: campaign)
           } label: {
-            HStack(alignment: .center, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
               CampaignAvatar(campaign: campaign)
               VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline) {
@@ -400,7 +432,14 @@ struct ExploreView: View {
                   Text("\(campaign.target) fynd").font(.caption).foregroundStyle(.secondary)
                 }
                 Text(campaign.title).font(.subheadline).foregroundStyle(.secondary)
-                Text(campaign.reward).font(.subheadline).lineLimit(2)
+                Text(campaign.collectionPitch).font(.subheadline).fixedSize(
+                  horizontal: false, vertical: true
+                )
+                .padding(.top, 3)
+                if LocalExperience.active {
+                  Text("Exempel · testkupong utan värde").font(.caption).foregroundStyle(.secondary)
+                    .padding(.top, 3)
+                }
               }
             }.padding(.vertical, 8)
           }.listRowSeparatorTint(HuntStyle.line)
@@ -439,26 +478,68 @@ struct ExploreView: View {
     } catch { self.error = error.localizedDescription }
   }
 }
+struct IntroductionView: View {
+  var onContinue: () -> Void
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 18) {
+          Image(systemName: "map.fill").font(.system(size: 34, weight: .medium))
+            .foregroundStyle(HuntStyle.accent).padding(16).background(
+              .white, in: RoundedRectangle(cornerRadius: 28)
+            )
+            .accessibilityHidden(true)
+          Text("Välkommen till\nVouchhunter").font(.largeTitle.bold()).fixedSize(
+            horizontal: false, vertical: true)
+          Text("Gör stan till en skattjakt.").font(.title3.weight(.semibold))
+          Text(
+            "Hitta företagens gömda föremål på stan. Samla dem med kameran och lås upp kuponger."
+          )
+          .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        VStack(spacing: 0) {
+          step(
+            "Hitta något du vill ha",
+            detail: "Välj en kampanj och se vad du kan få.",
+            icon: "ticket")
+          Divider().padding(.leading, 46)
+          step(
+            "Gå ut och samla",
+            detail:
+              "Följ kartan. När du är nära ser du föremålet i din omgivning genom kameran.",
+            icon: "viewfinder")
+          Divider().padding(.leading, 46)
+          step(
+            "Hämta din belöning",
+            detail:
+              "Nå målet och få din kupong. Visa den hos företaget enligt kampanjens villkor.",
+            icon: "gift")
+        }.padding(.horizontal, 16).background(.white, in: RoundedRectangle(cornerRadius: 24))
+        Text(
+          "Du kan börja med att titta runt. Vi frågar om plats och kamera först när de behövs i jakten."
+        )
+        .font(.footnote).foregroundStyle(.secondary)
+      }.padding(24)
+    }.background(HuntStyle.canvas)
+      .safeAreaInset(edge: .bottom) {
+        Button("Upptäck kampanjer", action: onContinue).buttonStyle(HuntPillButton())
+          .padding(20).background(HuntStyle.canvas)
+      }
+  }
+  private func step(_ title: String, detail: String, icon: String) -> some View {
+    HStack(alignment: .top, spacing: 16) {
+      Image(systemName: icon).font(.title3).frame(width: 30).accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 5) {
+        Text(title).font(.headline)
+        Text(detail).font(.subheadline).foregroundStyle(.secondary).fixedSize(
+          horizontal: false, vertical: true)
+      }
+    }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 18)
+  }
+}
 struct JourneyGuide: View {
   @Environment(\.dismiss) private var dismiss
-  var body: some View {
-    NavigationStack {
-      List {
-        Section {
-          Label("Välj en kampanj och läs erbjudandet.", systemImage: "ticket")
-          Label("Gå till ett föremål på kartan.", systemImage: "figure.walk")
-          Label("Öppna kameran och samla i AR.", systemImage: "viewfinder")
-          Label("Din kupong sparas när jakten är klar.", systemImage: "checkmark.circle")
-        }
-        Section {
-          Text(
-            "Platsåtkomst behövs under jakten. Kameran används först när du öppnar ett föremål. Håll uppsikt över trafiken och stanna när du använder kameran."
-          ).foregroundStyle(.secondary)
-        }
-      }.navigationTitle("Så fungerar det").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Klart") { dismiss() } } }
-    }
-  }
+  var body: some View { IntroductionView { dismiss() } }
 }
 struct CampaignOverviewView: View {
   let campaign: Campaign
@@ -480,7 +561,8 @@ struct CampaignOverviewView: View {
         CampaignHero(campaign: campaign)
         VStack(alignment: .leading, spacing: 12) {
           Label(campaign.reward, systemImage: "ticket").font(.title3.weight(.semibold))
-          Text(campaign.description).foregroundStyle(.secondary)
+          Text(LocalExperience.active ? campaign.collectionPitch : campaign.description)
+            .foregroundStyle(.secondary)
         }.huntPanel()
         VStack(spacing: 0) {
           overviewRow("Samla", value: "\(campaign.target) föremål", icon: "shippingbox")
@@ -514,7 +596,7 @@ struct CampaignOverviewView: View {
         } label: {
           Text("Öppna jakten")
         }
-        .buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
+        .buttonStyle(HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
         .padding(16).background(HuntStyle.canvas)
       }
       .navigationDestination(isPresented: $openHunt) { HuntView(campaign: campaign) }
@@ -688,13 +770,13 @@ struct HuntView: View {
           Label("Du är klar! Din voucher finns i plånboken.", systemImage: "checkmark.seal.fill")
             .foregroundStyle(HuntStyle.green)
           Button("Visa min voucher", systemImage: "qrcode") { showWallet = true }
-            .buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
+            .buttonStyle(HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
         } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
           Text(
             "En belöning reserveras i upp till 60 minuter, senast till kampanjens slut. Du behöver vara vid platserna för att samla."
           ).font(.footnote).foregroundStyle(.secondary)
           Button("Starta jakten") { Task { await start() } }.buttonStyle(
-            HuntPillButton(fill: campaign.accent, ink: campaign.accentText)
+            HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText)
           )
           .disabled(
             busy || campaign.ends <= clock.timeIntervalSince1970
@@ -830,7 +912,7 @@ struct HuntView: View {
             .title3.weight(.semibold))
           Text(campaign.reward).foregroundStyle(.secondary)
           Button("Visa min kupong") { showWallet = true }.buttonStyle(
-            HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
+            HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
         } else if hunt == nil || (hunt?.expires ?? 0) <= clock.timeIntervalSince1970 {
           Text(hunt == nil ? "Redo att börja?" : "Reservationen har gått ut").font(
             .title3.weight(.semibold))
@@ -843,9 +925,10 @@ struct HuntView: View {
               if busy { ProgressView().tint(.white) }
               Text("Starta jakten")
             }
-          }.buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText)).disabled(
-            busy || campaign.ends <= clock.timeIntervalSince1970
-              || campaign.starts > clock.timeIntervalSince1970)
+          }.buttonStyle(HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
+            .disabled(
+              busy || campaign.ends <= clock.timeIntervalSince1970
+                || campaign.starts > clock.timeIntervalSince1970)
           Text("Din belöning reserveras i upp till 60 minuter.").font(.footnote).foregroundStyle(
             .secondary)
         } else if let next = nextStop {
@@ -877,10 +960,10 @@ struct HuntView: View {
             Button(isPreview ? "Prova att samla" : "Öppna kameran") {
               captureCount = hunt?.collected.count ?? 0
               selected = next
-            }.buttonStyle(HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
+            }.buttonStyle(HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
           } else {
             Button("Visa gångväg") { directions(next) }.buttonStyle(
-              HuntPillButton(fill: campaign.accent, ink: campaign.accentText))
+              HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
           }
         }
         if !error.isEmpty {
