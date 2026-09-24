@@ -18,7 +18,7 @@ final class HuntCoreTests: XCTestCase {
     XCTAssertNil(v.branding)
   }
   func testDecodeBrandedVoucherInCompletedHunt() throws {
-    let data = Data(#"{"id":"h","expires":1900000000,"completed":1800000000,"collected":["s"],"voucher":{"id":"v","code":"test-code","expires":1900000000,"campaign_id":"c","brand":"Pizzeria Ett","title":"Ny pizza","terms":"En per person","branding":{"accent_color":"#FF113A","logo_url":"https://example.com/logo.png"}}}"#.utf8)
+    let data = Data(##"{"id":"h","expires":1900000000,"completed":1800000000,"collected":["s"],"voucher":{"id":"v","code":"test-code","expires":1900000000,"campaign_id":"c","brand":"Pizzeria Ett","title":"Ny pizza","terms":"En per person","branding":{"accent_color":"#FF113A","logo_url":"https://example.com/logo.png"}}}"##.utf8)
     let hunt = try JSONDecoder().decode(Hunt.self, from: data)
     XCTAssertEqual(hunt.voucher?.campaign_id, "c")
     XCTAssertEqual(hunt.voucher?.brand, "Pizzeria Ett")
