@@ -6,7 +6,7 @@ Detta ersätter tidigare Family/MSCHF-riktningar nedan, som finns kvar enbart so
 
 - WhatsApp iOS är referensen: systemtypografi, ljusgrå bakgrund, vita grupperade rader, diskreta avdelare och tre stabila flikar: Upptäck, Kuponger, Konto.
 - [WhatsApp-inställningar](https://refero.design/screens/f3caac1c-c651-4836-97e8-e43b46b76a73) styr grupper och radrytm. [Kontaktinformation](https://refero.design/screens/125f0071-b6c3-49fd-8005-a4b310f8f023) styr kampanjens avatar, namn och informationsgrupper. [Platsväljaren](https://refero.design/screens/d70f8957-114d-41b6-9b98-5c5c61ec36ac) styr kartans bottenpanel. Dessa bilder har granskats, inte bara sökresultat.
-- Vouchhunters gemensamma kontroller använder grafitgrått. Kampanjen kan ha egen accent, bakgrund, logotyp och hero-bild; redigering sker på obetalda utkast och låses när betalning inletts.
+- VoucherHunts gemensamma kontroller använder grafitgrått. Kampanjen kan ha egen accent, bakgrund, logotyp och hero-bild; redigering sker på obetalda utkast och låses när betalning inletts.
 - Brillo-exemplet använder rött #FF113A och gräddvitt #FFF5EB från [Brillo Pizza](https://brillopizza.se/). Kampanjen är fiktiv och kupongen saknar inlösenvärde.
 - Resan börjar med kampanj och belöning. Inloggning behövs först för en riktig jakt. GPS efterfrågas i jakten och kamera vid insamling.
 - Pizza, lugn svävning, pulserande ring och haptik ger spelkänsla. Minska rörelse stoppar de kontinuerliga animationerna. AR är lokal ytplacering inom GPS-radie, inte ett delat geospatialt ankare.
@@ -34,7 +34,7 @@ Ljus arbetsyta, mörk skogsgrön navigation, lime på primära handlingar, neutr
 | Tomt läge med skapa-handling | Anti-AI-slop + verkligt tom databas | Inga fiktiva resultat |
 | Äkta kartor och native 3D | Användarens brief | Plats och AR är funktion, inte dekoration |
 
-Undvik gradienter, emojiikoner, dekorativa diagram, säljsektioner i arbetsvyn och falska betalningsbekräftelser. Referenserna anger metod och hantverk, inte en befintlig Vouchhunter-identitet.
+Undvik gradienter, emojiikoner, dekorativa diagram, säljsektioner i arbetsvyn och falska betalningsbekräftelser. Referenserna anger metod och hantverk, inte en befintlig VoucherHunt-identitet.
 
 ## Uppdaterad riktning från användaren
 
@@ -67,7 +67,7 @@ Användaren har valt Family. Refero tillgängligt igen: stil `fd409745-cef9-4cb2
 |---|---|---|
 | Solida ljusa paneler, rymliga rundningar | [Watching Wallets](https://refero.design/screens/ca88e8c5-2fb2-4935-b52b-0edf5aaac6bb) | Spelarens nästa mål på vit panel över kartan; ingen grön glasdimma |
 | Rundad sans, få tydliga nivåer | Båda granskade appbilderna | SF Rounded i spelvyn; Dynamic Type behålls |
-| Färgat samlingskort och pillknapp | [Wallets ready](https://refero.design/screens/cc5547f7-52a5-490c-8755-d660e00917f4) | Mättad Vouchhunter-grön för handling/status, ljus mint för samling; inte Families varumärkestillgångar |
+| Färgat samlingskort och pillknapp | [Wallets ready](https://refero.design/screens/cc5547f7-52a5-490c-8755-d660e00917f4) | Mättad VoucherHunt-grön för handling/status, ljus mint för samling; inte Families varumärkestillgångar |
 | Koncentrerad handling i nederkant | Watching Wallets | En bred primärknapp, sekundära handlingar lugnare |
 | Samling visas som fyllda platser | Användarens spelkrav | Upp till tio visuella markeringar; större mål behåller numerisk progress |
 
@@ -77,7 +77,7 @@ Avvisat: webbplatsens serifrubriker och dekorativa karaktärer överförs inte t
 
 Användarens Amo-kartbild styr perspektivet: nära, vinklad karta med tydligt föremål. MapKit använder dämpad standardstil utan POI-etiketter. Ett valt fynd visas med kampanjens USDZ i en statisk 3D-vy; andra tillgängliga platser är små valbara punkter. Insamlade platser lämnar kartan. Samlingspill och centreringsknapp ersätter den stora övre panelen. Nästa-fynd-panelen visar återstående steg och konkret belöning. Förhandsvisningens pizza är en lokal procedurmodell, inte ett uppladdat kundobjekt.
 
-Produktloopen är en spelifierad kuponginsamling: upptäck kampanj → gå till föremål → öppna möte → samla → åter till karta → lås upp kupong → lös in. Pokémon GO är referens för kartans upptäckt/möte, inte för grafiska tillgångar eller hela progressionsekonomin. [Niantics AR-beskrivning](https://niantic.helpshift.com/hc/en/6-pokemon-go/faq/28-catching-pokemon-in-ar-mode-1712012768/) skiljer verklig kamera-AR från kartvyn. Inga kast, strider eller nivåkrav införs i Vouchhunter. Kupongen och återstående fynd ska vara läsbara under hela jakten.
+Produktloopen är en spelifierad kuponginsamling: upptäck kampanj → gå till föremål → öppna möte → samla → åter till karta → lås upp kupong → lös in. Pokémon GO är referens för kartans upptäckt/möte, inte för grafiska tillgångar eller hela progressionsekonomin. [Niantics AR-beskrivning](https://niantic.helpshift.com/hc/en/6-pokemon-go/faq/28-catching-pokemon-in-ar-mode-1712012768/) skiljer verklig kamera-AR från kartvyn. Inga kast, strider eller nivåkrav införs i VoucherHunt. Kupongen och återstående fynd ska vara läsbara under hela jakten.
 
 ## MSCHF-bildens typografi och spelkänsla
 Användarens bifogade bild styr nu spelarens HUD: monospaced systemtypografi, korta versala etiketter, tunna linjeikoner, mörka paneler och en ensam tydlig limegrön primärhandling. Detta ersätter Family-rundad typografi i jakt/AR; Family bidrar fortsatt med pillknappar, mjuka paneler och avstånd. Kartan behålls ljus och dämpad. Längre villkor skrivs fortsatt som vanlig text, inte versala textblock. Ingen gissning om referensens exakta font: native systemmonospace används.

@@ -243,7 +243,7 @@ struct AccountView: View {
           Button {
             showGuide = true
           } label: {
-            Label("Så fungerar Vouchhunter", systemImage: "questionmark.circle")
+            Label("Så fungerar VoucherHunt", systemImage: "questionmark.circle")
           }
           Button {
             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -362,7 +362,7 @@ struct LoginView: View {
           }.frame(maxWidth: .infinity)
         }.listRowBackground(Color.clear)
       }.scrollContentBackground(.hidden).background(HuntStyle.canvas)
-        .navigationTitle("Vouchhunter").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("VoucherHunt").navigationBarTitleDisplayMode(.inline)
     }
   }
   private func submit() async {
@@ -454,7 +454,7 @@ struct ExploreView: View {
             } label: {
               Image(systemName: "questionmark")
             }
-            .accessibilityLabel("Så fungerar Vouchhunter")
+            .accessibilityLabel("Så fungerar VoucherHunt")
           }
         }
         .refreshable { await load() }.task { await load() }
@@ -489,7 +489,7 @@ struct IntroductionView: View {
               .white, in: RoundedRectangle(cornerRadius: 28)
             )
             .accessibilityHidden(true)
-          Text("Välkommen till\nVouchhunter").font(.largeTitle.bold()).fixedSize(
+          Text("Välkommen till\nVoucherHunt").font(.largeTitle.bold()).fixedSize(
             horizontal: false, vertical: true)
           Text("Gör stan till en skattjakt.").font(.title3.weight(.semibold))
           Text(

@@ -24,7 +24,7 @@ const paths = {
 };
 const icon = (n) =>
   `<svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="${paths[n] || paths.pin}"/></svg>`;
-const brand = `<div class="brand"><span class="brandmark">${icon("pin")}</span>vouchhunter<span>.</span></div>`;
+const brand = `<div class="brand"><span class="brandmark">${icon("pin")}</span>VoucherHunt<span>.</span></div>`;
 let me = null,
   campaigns = [],
   briefs = [],
@@ -57,7 +57,7 @@ window.addEventListener("beforeunload", (e) => {
 });
 function auth(register = false) {
   $("#app").innerHTML =
-    `<div class="auth"><aside class="auth-story">${brand}<div><div class="eyebrow">UT I VERKLIGHETEN</div><h1>Gör din nästa kampanj till ett äventyr.</h1><p>Låt människor upptäcka dina produkter, samla föremål och hitta hela vägen till dig.</p></div><p>Företagsportalen · Vouchhunter</p></aside><main class="auth-form"><form id="authform"><div class="eyebrow">FÖR FÖRETAG</div><h1>${register ? "Din nästa kampanj börjar här." : "Välkommen tillbaka."}</h1><p>${register ? "Skapa ett konto och börja planera din första jakt." : "Logga in för att hantera dina kampanjer."}</p>${register ? '<label for="name">Ditt namn</label><input id="name" name="name" autocomplete="name" required><label for="company">Företagsnamn</label><input id="company" name="company" autocomplete="organization" required>' : ""}<label for="email">E-postadress</label><input id="email" name="email" type="email" autocomplete="email" required><label for="password">Lösenord</label><input id="password" name="password" type="password" minlength="10" autocomplete="${register ? "new-password" : "current-password"}" required>${register ? '<p class="helper">Använd minst 10 tecken.</p>' : ""}<div class="error" role="alert"></div><button class="primary" type="submit">${register ? "Skapa företagskonto" : "Logga in"} →</button><button class="ghost" id="switch" type="button">${register ? "Har du redan ett konto? Logga in" : "Ny här? Skapa företagskonto"}</button></form></main></div>`;
+    `<div class="auth"><aside class="auth-story">${brand}<div><div class="eyebrow">UT I VERKLIGHETEN</div><h1>Gör din nästa kampanj till ett äventyr.</h1><p>Låt människor upptäcka dina produkter, samla föremål och hitta hela vägen till dig.</p></div><p>Företagsportalen · VoucherHunt</p></aside><main class="auth-form"><form id="authform"><div class="eyebrow">FÖR FÖRETAG</div><h1>${register ? "Din nästa kampanj börjar här." : "Välkommen tillbaka."}</h1><p>${register ? "Skapa ett konto och börja planera din första jakt." : "Logga in för att hantera dina kampanjer."}</p>${register ? '<label for="name">Ditt namn</label><input id="name" name="name" autocomplete="name" required><label for="company">Företagsnamn</label><input id="company" name="company" autocomplete="organization" required>' : ""}<label for="email">E-postadress</label><input id="email" name="email" type="email" autocomplete="email" required><label for="password">Lösenord</label><input id="password" name="password" type="password" minlength="10" autocomplete="${register ? "new-password" : "current-password"}" required>${register ? '<p class="helper">Använd minst 10 tecken.</p>' : ""}<div class="error" role="alert"></div><button class="primary" type="submit">${register ? "Skapa företagskonto" : "Logga in"} →</button><button class="ghost" id="switch" type="button">${register ? "Har du redan ett konto? Logga in" : "Ny här? Skapa företagskonto"}</button></form></main></div>`;
   $("#switch").onclick = () => auth(!register);
   $("#authform").onsubmit = async (e) => {
     e.preventDefault();
@@ -78,7 +78,7 @@ function auth(register = false) {
 }
 function shell(content) {
   $("#app").innerHTML =
-    `<div class="shell"><aside class="sidebar">${brand}<div class="workspace">${esc(adminMode ? "Vouchhunter admin" : me.organizations[0]?.name || me.name)}<small>${adminMode ? "Plattformsadministration" : "Kunddashboard"}</small></div><nav class="nav" aria-label="Huvudnavigation">${(adminMode
+    `<div class="shell"><aside class="sidebar">${brand}<div class="workspace">${esc(adminMode ? "VoucherHunt admin" : me.organizations[0]?.name || me.name)}<small>${adminMode ? "Plattformsadministration" : "Kunddashboard"}</small></div><nav class="nav" aria-label="Huvudnavigation">${(adminMode
       ? [
           ["campaigns", "grid", "Alla kampanjer"],
           ["briefs", "pin", "Förfrågningar"],
@@ -373,7 +373,7 @@ function brandingPreview(c, raw, live = false) {
 }
 function brandingForm(c) {
   const b = safeBranding(c.branding);
-  openModal(`<form id="branding-form"><div class="modalhead"><h2>Ert varumärke</h2><button type="button" id="close" class="ghost" aria-label="Stäng">✕</button></div><p>Logotyp, kampanjbild och färger visas i er kampanj. Vouchhunters navigation behåller sitt gemensamma utseende.</p><div class="form-grid"><label>Accentfärg<input type="color" name="accent_color" value="${b.accent_color}"></label><label>Bakgrundsfärg<input type="color" name="background_color" value="${b.background_color}"></label></div><label>Logotypens bildadress<input type="url" name="logo_url" value="${esc(b.logo_url)}" placeholder="https://…/logotyp.png"></label><label>Kampanjbildens adress<input type="url" name="hero_url" value="${esc(b.hero_url)}" placeholder="https://…/produkt.jpg"></label><p class="helper">Använd offentliga HTTPS-bilder i PNG eller JPEG som ni har rätt att använda. Tomma bildfält visar ert namn istället.</p><div id="brand-preview">${brandingPreview(c,b)}</div><div class="error" role="alert"></div><div class="actions"><button class="primary" type="submit">Spara varumärke</button></div></form>`);
+  openModal(`<form id="branding-form"><div class="modalhead"><h2>Ert varumärke</h2><button type="button" id="close" class="ghost" aria-label="Stäng">✕</button></div><p>Logotyp, kampanjbild och färger visas i er kampanj. VoucherHunts navigation behåller sitt gemensamma utseende.</p><div class="form-grid"><label>Accentfärg<input type="color" name="accent_color" value="${b.accent_color}"></label><label>Bakgrundsfärg<input type="color" name="background_color" value="${b.background_color}"></label></div><label>Logotypens bildadress<input type="url" name="logo_url" value="${esc(b.logo_url)}" placeholder="https://…/logotyp.png"></label><label>Kampanjbildens adress<input type="url" name="hero_url" value="${esc(b.hero_url)}" placeholder="https://…/produkt.jpg"></label><p class="helper">Använd offentliga HTTPS-bilder i PNG eller JPEG som ni har rätt att använda. Tomma bildfält visar ert namn istället.</p><div id="brand-preview">${brandingPreview(c,b)}</div><div class="error" role="alert"></div><div class="actions"><button class="primary" type="submit">Spara varumärke</button></div></form>`);
   const form = $("#branding-form");
   form.oninput = () => { dirty = true; $("#brand-preview").innerHTML = brandingPreview(c,Object.fromEntries(new FormData(form))); };
   form.onsubmit = async e => {
@@ -576,7 +576,7 @@ async function publicCampaign(id) {
   try {
     const c = await api("/campaigns/" + id);
     $("#app").innerHTML =
-      `<main class="public"><header>${brand}</header>${brandingPreview(c,c.branding,true)}<div class="eyebrow">${esc(c.brand)} · Utomhus</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><section class="reward"><div class="eyebrow">DIN BELÖNING</div><h2>${esc(c.reward)}</h2><p>Samla ${c.target} objekt · ${c.stops.length} platser att upptäcka</p></section><h2>Här börjar äventyret</h2><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}<span>${icon("pin")}</span></li>`).join("")}</ul><h3>Gäller ${date(c.starts)} – ${date(c.ends)}</h3><p>${esc(c.terms)}</p><p>Inlösen: ${esc(c.venue)}. Din voucher gäller i ${c.voucher_days} dagar.</p><p class="helper">Jakten genomförs i Vouchhunter-appen. Appbutikslänkar visas när apparna är publicerade.</p></main>`;
+      `<main class="public"><header>${brand}</header>${brandingPreview(c,c.branding,true)}<div class="eyebrow">${esc(c.brand)} · Utomhus</div><h1>${esc(c.title)}</h1><p>${esc(c.description)}</p><section class="reward"><div class="eyebrow">DIN BELÖNING</div><h2>${esc(c.reward)}</h2><p>Samla ${c.target} objekt · ${c.stops.length} platser att upptäcka</p></section><h2>Här börjar äventyret</h2><ul class="stop-list">${c.stops.map((s) => `<li>${esc(s.name)}<span>${icon("pin")}</span></li>`).join("")}</ul><h3>Gäller ${date(c.starts)} – ${date(c.ends)}</h3><p>${esc(c.terms)}</p><p>Inlösen: ${esc(c.venue)}. Din voucher gäller i ${c.voucher_days} dagar.</p><p class="helper">Jakten genomförs i VoucherHunt-appen. Appbutikslänkar visas när apparna är publicerade.</p></main>`;
   } catch (ex) {
     $("#app").innerHTML =
       `<main class="public">${brand}<h1>Kampanjen är inte tillgänglig.</h1><p>${esc(ex.message)}</p></main>`;
@@ -609,7 +609,7 @@ async function init() {
   }
   try {
     if (adminMode && !me.is_admin)
-      throw Error("Den här vyn är endast för Vouchhunters administratör.");
+      throw Error("Den här vyn är endast för VoucherHunts administratör.");
     await loadCampaigns();
     if (
       !adminMode &&

@@ -10,7 +10,7 @@ All källkod och lokal data hör till detta repos rot. Git remote är `https://g
 - Databas: `data/vouchhunter.sqlite3`, enbart för detta projekt, ignorerad i Git.
 - Android-emulator når backend på `10.0.2.2:8787`; iPhone-simulator på `127.0.0.1:8787`.
 - Lokala signing-/serverinställningar ligger i `ios/Configuration/Local.xcconfig`, ignorerad i Git.
-- Använd en dedikerad simulator med Vouchhunter i namnet för fortsatt testning.
+- Använd en dedikerad simulator med VoucherHunt i namnet för fortsatt testning.
 
 ## iOS
 

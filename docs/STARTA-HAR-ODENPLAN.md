@@ -1,6 +1,6 @@
 # I morgon: pizza på Odenplan
 
-**Telefon:** iPhone 16e. **App:** Vouchhunter. **Kampanj:** Brillo Pizza – Upptäck vår nya pizza.
+**Telefon:** iPhone 16e. **App:** VoucherHunt. **Kampanj:** Brillo Pizza – Upptäck vår nya pizza.
 
 ## Innan du går hemifrån
 
@@ -21,13 +21,13 @@
 5. Öppna kameran och tillåt kameraåtkomst. Rikta den mot marken och rör telefonen långsamt tills pizzan visas.
 6. Tryck på pizzan eller insamlingsknappen. Efter insamlingen öppnar du belöningen; den finns också under **Kuponger**.
 
-Fälttestet använder riktig GPS och kamera men sparar fynd och kupong lokalt på telefonen. Det kräver ingen Vouchhunter-server. Kartbilder kan kräva internet. Brillo är en exempelkund och kupongen är **en testkupong utan värde**, inte ett erbjudande som restaurangen löser in.
+Fälttestet använder riktig GPS och kamera men sparar fynd och kupong lokalt på telefonen. Det kräver ingen VoucherHunt-server. Kartbilder kan kräva internet. Brillo är en exempelkund och kupongen är **en testkupong utan värde**, inte ett erbjudande som restaurangen löser in.
 
 ## Om något inte fungerar
 
 - **Kameraknappen går inte att trycka:** kontrollera att jakten startats, att du är nära kartpunkten och att Exakt plats är på. Vänta utomhus tills GPS-positionen stabiliserats; noggrannheten måste vara 35 meter eller bättre och positionen aktuell.
 - **Ingen pizza i kameran:** rikta mot en tydlig, ljus markyta och rör telefonen långsamt. Testa ”Försök igen” vid spårningsfel.
-- **Åtkomst nekad:** öppna telefonens Inställningar → Appar → Vouchhunter och tillåt plats/kamera.
+- **Åtkomst nekad:** öppna telefonens Inställningar → Appar → VoucherHunt och tillåt plats/kamera.
 - **Jakten har gått ut eller du vill testa igen:** Konto → Börja om jakten. Detta återställer endast den lokala testjakten.
 - **Xcode kan inte signera/installera:** skicka det exakta felmeddelandet. AR kan inte bedömas i simulatorn; installationsfelet måste lösas innan promenaden.
 

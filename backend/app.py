@@ -1,4 +1,4 @@
-"""Vouchhunter WSGI API. Run locally with python3 -m backend.app.
+"""VoucherHunt WSGI API. Run locally with python3 -m backend.app.
 Production deployment requires TLS and a production WSGI host; see docs/OPERATIONS.md.
 """
 
@@ -746,7 +746,7 @@ class App:
                     self.store.member(db, who, c["org_id"], True)
                     require(
                         c["model_id"],
-                        "Kampanjen förbereds av Vouchhunter. Betalning öppnas när upplägget är klart.",
+                        "Kampanjen förbereds av VoucherHunt. Betalning öppnas när upplägget är klart.",
                         409,
                     )
                     return self.checkout(db, c), None
@@ -1082,6 +1082,6 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 8787))
     app = create_app()
-    print(f"Vouchhunter: http://127.0.0.1:{port}", flush=True)
+    print(f"VoucherHunt: http://127.0.0.1:{port}", flush=True)
     with make_server("127.0.0.1", port, app) as server:
         server.serve_forever()

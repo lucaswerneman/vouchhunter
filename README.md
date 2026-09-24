@@ -1,4 +1,6 @@
-# Vouchhunter
+# VoucherHunt
+
+Arbetsnamnet är **VoucherHunt**. Projektmapp, Xcode-projekt/scheman, app-ID:n och GitHub-repo behåller tills vidare sina tekniska namn med `Vouchhunter`/`vouchhunter`.
 
 Plattform för kampanjer med skattjakter utomhus, AR-insamling och voucherinlösen.
 
