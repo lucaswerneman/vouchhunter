@@ -32,6 +32,9 @@ public struct CampaignModel: Codable, Sendable {
   public let usdz_asset_id: String
 }
 public struct Voucher: Codable, Identifiable, Sendable {
+  public let campaign_id: String?
+  public let brand: String?
+  public let branding: CampaignBranding?
   public let id: String
   public let code: String
   public let expires: TimeInterval

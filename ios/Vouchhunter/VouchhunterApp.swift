@@ -961,6 +961,13 @@ struct HuntView: View {
               captureCount = hunt?.collected.count ?? 0
               selected = next
             }.buttonStyle(HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
+          } else if location.permissionDenied {
+            Button("Tillåt platsåtkomst") {
+              if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+            }.buttonStyle(HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
+          } else if location.location == nil {
+            Button("Hämta min position") { location.start() }
+              .buttonStyle(HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))
           } else {
             Button("Visa gångväg") { directions(next) }.buttonStyle(
               HuntPillButton(fill: campaign.buttonAccent, ink: campaign.accentText))

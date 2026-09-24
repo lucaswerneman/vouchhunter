@@ -173,6 +173,25 @@ class Store:
         result["model"] = dict(model) if model else None
         return result
 
+    def vouchers(self, db, user, hunt_id=None):
+        # Same contract for initial issuance, restored hunts and the wallet.
+        query = (
+            "SELECT v.*,c.id AS campaign_id,c.title,c.reward,c.venue,c.terms,"
+            "c.branding_json,o.name AS brand FROM vouchers v "
+            "JOIN hunts h ON h.id=v.hunt_id JOIN campaigns c ON c.id=h.campaign_id "
+            "JOIN organizations o ON o.id=c.org_id WHERE h.user_id=?"
+        )
+        params = [user]
+        if hunt_id is not None:
+            query += " AND h.id=?"
+            params.append(hunt_id)
+        result = []
+        for row in db.execute(query + " ORDER BY v.expires DESC,v.id", params):
+            voucher = dict(row)
+            voucher["branding"] = json.loads(voucher.pop("branding_json", "{}"))
+            result.append(voucher)
+        return result
+
     def hunt(self, db, user, cid):
         h = db.execute(
             "SELECT * FROM hunts WHERE user_id=? AND campaign_id=?", (user, cid)
@@ -186,8 +205,8 @@ class Store:
                 "SELECT stop_id FROM collections WHERE hunt_id=?", (h["id"],)
             )
         ]
-        v = db.execute("SELECT * FROM vouchers WHERE hunt_id=?", (h["id"],)).fetchone()
-        result["voucher"] = dict(v) if v else None
+        vouchers = self.vouchers(db, user, h["id"])
+        result["voucher"] = vouchers[0] if vouchers else None
         return result
 
     def start(self, db, user, cid):
@@ -936,11 +955,8 @@ class App:
                 if method == "POST" and action == "collect":
                     return self.store.collect(db, who, cid, data), None
             if path == "/api/vouchers" and method == "GET":
-                rows = db.execute(
-                    "SELECT v.*,c.title,c.reward,c.venue,c.terms FROM vouchers v JOIN hunts h ON h.id=v.hunt_id JOIN campaigns c ON c.id=h.campaign_id WHERE h.user_id=? ORDER BY v.expires DESC",
-                    (who,),
-                )
-                return {"vouchers": [dict(r) for r in rows]}, None
+                return {"vouchers": self.store.vouchers(db, who)}, None
+
             if (
                 path in ("/api/vouchers/check", "/api/vouchers/redeem")
                 and method == "POST"

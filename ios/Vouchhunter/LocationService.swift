@@ -7,6 +7,7 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
   private var wantsUpdates = false
   @Published var location: CLLocation?
   @Published var message: String?
+  @Published private(set) var permissionDenied = false
   override init() {
     super.init()
     manager.delegate = self
@@ -16,18 +17,28 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
     wantsUpdates = true
     switch manager.authorizationStatus {
     case .notDetermined: manager.requestWhenInUseAuthorization()
-    case .authorizedWhenInUse, .authorizedAlways: manager.startUpdatingLocation()
-    default: message = "Tillåt platsåtkomst i Inställningar för att hitta och samla objekt."
+    case .authorizedWhenInUse, .authorizedAlways:
+      permissionDenied = false
+      message = nil
+      manager.startUpdatingLocation()
+    default:
+      permissionDenied = true
+      location = nil
+      manager.stopUpdatingLocation()
+      message = "Tillåt platsåtkomst i Inställningar för att hitta och samla objekt."
     }
   }
   func stop() { wantsUpdates = false; manager.stopUpdatingLocation() }
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    permissionDenied = manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted
+    if permissionDenied { location = nil; manager.stopUpdatingLocation() }
     if wantsUpdates && manager.authorizationStatus != .notDetermined { start() }
   }
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-    guard let last = locations.last else { return }
+    guard !permissionDenied, let last = locations.last else { return }
     location = last
-    message = nil
+    message = manager.accuracyAuthorization == .reducedAccuracy
+      ? "Aktivera Exakt plats i Inställningar för att samla föremål." : nil
   }
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
     message = "Din position kunde inte hämtas. Försök igen utomhus."

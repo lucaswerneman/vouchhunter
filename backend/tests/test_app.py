@@ -321,6 +321,32 @@ class PlatformTests(unittest.TestCase):
                 db.execute("SELECT count(*) FROM vouchers").fetchone()[0], 1
             )
 
+    def test_voucher_information_survives_issue_restore_and_redemption(self):
+        cid = self.campaign["id"]
+        branding = {"accent_color": "#FF113A", "logo_url": "https://example.com/logo.png"}
+        status, branded = self.call("/api/manage/campaigns/" + cid + "/branding", branding, self.owner)
+        self.assertEqual(status, 200, branded)
+        self.publish_for_test()
+        self.start()
+        status, issued = self.collect()
+        self.assertEqual(status, 200, issued)
+        voucher = issued["voucher"]
+        for key in ("title", "reward", "venue", "terms"):
+            self.assertEqual(voucher[key], self.campaign[key])
+        self.assertEqual(voucher["campaign_id"], cid)
+        self.assertEqual(voucher["brand"], "Pizzeria Ett")
+        self.assertEqual(voucher["branding"], branded["branding"])
+        restored = self.call("/api/hunts/" + cid, token=self.customer)[1]["hunt"]
+        self.assertEqual(restored["voucher"], voucher)
+        self.assertEqual(self.call("/api/vouchers", token=self.customer)[1]["vouchers"], [voucher])
+        self.assertEqual(self.call("/api/vouchers", token=self.other)[1]["vouchers"], [])
+        self.assertEqual(self.call("/api/vouchers")[0], 401)
+        self.assertEqual(self.call("/api/vouchers/redeem", {"code": voucher["code"]}, self.owner)[0], 200)
+        redeemed = self.call("/api/vouchers", token=self.customer)[1]["vouchers"][0]
+        self.assertIsNotNone(redeemed["redeemed"])
+        self.assertEqual(redeemed["branding"], voucher["branding"])
+        self.assertEqual(redeemed["terms"], voucher["terms"])
+
     def test_redeem_once_and_cross_company_denied(self):
         self.publish_for_test()
         self.start()

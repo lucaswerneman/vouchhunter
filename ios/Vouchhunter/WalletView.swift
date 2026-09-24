@@ -32,6 +32,15 @@ struct WalletView: View {
                   Image("BrilloLogo").resizable().scaledToFit().frame(width: 48, height: 48)
                   Text("Brillo Pizza").font(.headline)
                 }
+              } else if let brand = v.brand {
+                HStack(spacing: 12) {
+                  if let source = v.branding?.logo_url, let url = URL(string: source), url.scheme == "https" {
+                    AsyncImage(url: url) { image in image.resizable().scaledToFit() } placeholder: {
+                      Image(systemName: "storefront").foregroundStyle(.secondary)
+                    }.frame(width: 48, height: 48).accessibilityHidden(true)
+                  }
+                  Text(brand).font(.headline)
+                }
               }
               Text(v.title ?? "Din belöning").font(.subheadline).foregroundStyle(
                 .secondary)

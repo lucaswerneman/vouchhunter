@@ -2,6 +2,14 @@
 
 Leveransmålet är hela lösningen. Projektet är under aktiv utveckling och inte lanseringsklart.
 
+## Fortsatt arbete – 24 september
+
+- Backend ger samma fullständiga kuponginformation vid insamling, återöppning och i kuponglistan: kampanj, företag, belöning, villkor och branding. Nytt regressionstest täcker även användarisolering och inlösen. 28 backendtester passerar lokalt.
+- iOS-kuponger använder nu företagets namn och logotyp även för riktiga kampanjer. Äldre kupongsvar utan branding stöds fortsatt.
+- Nekad platsåtkomst rensar senast kända positionen och stoppar uppdateringarna. Jaktens primärknapp leder till Inställningar eller hämtning av position när det behövs. Dessa visuella ändringar väntar på ny simulatorgranskning.
+- iPhone 16e är parkopplad och Utvecklarläge är aktivt. Signering blockeras fortfarande av teamåtkomst/provisioneringsprofil under Apples kontoflytt.
+- Lokala Xcode-kommandon kräver nu att användaren godkänner Apples nya licens. Ingen licens har accepterats automatiskt. Byggverifiering för denna ändring körs därför i GitHub Actions.
+
 ## Senaste verifierade läge – Brillo / Odenplan
 
 Börja med [guiden för morgondagens telefonprov](STARTA-HAR-ODENPLAN.md).
